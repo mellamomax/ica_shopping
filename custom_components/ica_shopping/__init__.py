@@ -4,7 +4,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.helpers.discovery import async_load_platform
 
-from .const import DOMAIN, DATA_ICA, COOKIE_CACHE_FILE
+from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
 
 CONFIG_SCHEMA = vol.Schema(
@@ -20,18 +20,20 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 async def async_setup(hass, config):
+    """Set up the ICA Shopping integration from YAML config."""
     conf = config.get(DOMAIN)
-    if conf is None:
+    if not conf:
         return True
 
     username = conf[CONF_USERNAME]
     password = conf[CONF_PASSWORD]
 
+    # Initiera API-klienten
     api = ICAApi(hass, username, password)
     await api.async_initialize()
 
-    # Spara API-instansen så sensorer och service kan använda den
-    hass.data[DOMAIN] = {DATA_ICA: api}
+    # Spara klienten så sensor-plattformen kan hitta den
+    hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
     # Ladda sensor-plattformen
     hass.async_create_task(
@@ -49,7 +51,10 @@ async def async_setup(hass, config):
         "add_item",
         handle_add_item,
         schema=vol.Schema(
-            {vol.Required("list_id"): cv.string, vol.Required("text"): cv.string}
+            {
+                vol.Required("list_id"): cv.string,
+                vol.Required("text"): cv.string,
+            }
         ),
     )
 
