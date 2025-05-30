@@ -3,7 +3,8 @@
   "name": "ICA Shopping List",
   "version": "0.0.1",
   "documentation": "https://github.com/mellamomax/ica_shopping",
+  "requirements": ["requests"],
   "dependencies": [],
-  "codeowners": ["@mellamomax"],
-  "requirements": []
+  "codeowners": ["@mellamomax"]
 }
+
