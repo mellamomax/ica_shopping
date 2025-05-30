@@ -28,14 +28,14 @@ async def async_setup(hass, config):
     username = conf[CONF_USERNAME]
     password = conf[CONF_PASSWORD]
 
-    # Initiera API-klienten
+    # Initiera API‐klienten
     api = ICAApi(hass, username, password)
     await api.async_initialize()
 
-    # Spara klienten så sensor-plattformen kan hitta den
+    # Spara klienten så sensor‐plattformen kan nå den
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
-    # Ladda sensor-plattformen
+    # Ladda sensor‐plattformen
     hass.async_create_task(
         async_load_platform(hass, "sensor", DOMAIN, {}, config)
     )

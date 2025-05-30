@@ -6,7 +6,6 @@ from .const import (
     API_USER_INFO,
     API_LIST_ALL,
     API_ADD_ROW,
-    COOKIE_CACHE_FILE,
 )
 
 STORAGE_KEY = "ica_cookie_cache"
@@ -20,11 +19,11 @@ class ICAApi:
         self.session = requests.Session()
         self._token = None
         self._expires = None
-        # Flytta Store-initialisering in hit
+        # Rätt Store‐init med hass, version och nyckel:
         self._cookie_store = storage.Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def async_initialize(self):
-        """Läs cookies från storage eller skapa nya."""
+        """Läs cookies eller lagra nya."""
         data = await self._cookie_store.async_load()
         if data and data.get("cookies"):
             self.session.cookies.update(data["cookies"])
@@ -32,8 +31,9 @@ class ICAApi:
             await self._async_store_cookies()
 
     async def _async_store_cookies(self):
-        """Placeholder för login (t.ex. Puppeteer) och spara cookies."""
-        # TODO: Här fyller du på self.session.cookies genom inloggning
+        """TODO: Här loggar du in och sparar cookies."""
+        # Exempel: login via form‐POST eller Puppeteer
+        # När session.cookies är satt:
         cookies = self.session.cookies.get_dict()
         await self._cookie_store.async_save({"cookies": cookies})
 
@@ -46,11 +46,10 @@ class ICAApi:
         data = resp.json()
         self._token = data["accessToken"]
         exp = data["tokenExpires"]
-        # Konvertera ISO-tid och ta bort Z
         self._expires = datetime.fromisoformat(exp.replace("Z", ""))
 
     def get_headers(self) -> dict:
-        """Returnera headers med giltig bearer-token."""
+        """Returnera giltiga headers."""
         self._ensure_token()
         return {
             "Authorization": f"Bearer {self._token}",
@@ -64,7 +63,7 @@ class ICAApi:
         return resp.json()
 
     def add_item(self, list_id: str, text: str) -> dict:
-        """Lägg till en rad i en specifik inköpslista."""
+        """Lägg till en vara i en specifik lista."""
         headers = self.get_headers()
         url = API_ADD_ROW.format(list_id=list_id)
         payload = {
