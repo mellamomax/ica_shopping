@@ -1,7 +1,7 @@
 {
   "domain": "ica_shopping",
   "name": "ICA Shopping List",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "documentation": "https://github.com/mellamomax/ica_shopping",
   "requirements": ["requests"],
   "dependencies": [],
