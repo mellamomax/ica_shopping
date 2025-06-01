@@ -11,6 +11,7 @@ from .const import (
 STORAGE_KEY = "ica_cookie_cache"
 STORAGE_VERSION = 1
 
+
 class ICAApi:
     def __init__(self, hass, username: str, password: str):
         self.hass = hass
@@ -19,11 +20,10 @@ class ICAApi:
         self.session = requests.Session()
         self._token = None
         self._expires = None
-        # Rätt Store‐init med hass, version och nyckel:
         self._cookie_store = storage.Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def async_initialize(self):
-        """Läs cookies eller lagra nya."""
+        """Ladda cookies från storage eller initiera ny inloggning."""
         data = await self._cookie_store.async_load()
         if data and data.get("cookies"):
             self.session.cookies.update(data["cookies"])
@@ -31,25 +31,26 @@ class ICAApi:
             await self._async_store_cookies()
 
     async def _async_store_cookies(self):
-        """TODO: Här loggar du in och sparar cookies."""
-        # Exempel: login via form‐POST eller Puppeteer
-        # När session.cookies är satt:
+        """Här ska du logga in och spara cookies – placeholder."""
+        # TODO: Implementera faktisk login med form-post eller Puppeteer
         cookies = self.session.cookies.get_dict()
         await self._cookie_store.async_save({"cookies": cookies})
 
     def _ensure_token(self):
-        """Hämta nytt accessToken om det saknas eller har gått ut."""
+        """Säkerställ giltigt access-token."""
         if self._token and datetime.utcnow() < self._expires:
             return
 
         resp = self.session.get(API_USER_INFO)
+        resp.raise_for_status()
         data = resp.json()
+
         self._token = data["accessToken"]
         exp = data["tokenExpires"]
         self._expires = datetime.fromisoformat(exp.replace("Z", ""))
 
     def get_headers(self) -> dict:
-        """Returnera giltiga headers."""
+        """Returnera headers med giltigt access-token."""
         self._ensure_token()
         return {
             "Authorization": f"Bearer {self._token}",
@@ -57,10 +58,15 @@ class ICAApi:
         }
 
     def fetch_lists(self) -> list:
-        """Hämta alla shoppinglistor."""
+        """Synkront anrop för att hämta alla inköpslistor."""
         headers = self.get_headers()
         resp = self.session.get(API_LIST_ALL, headers=headers)
+        resp.raise_for_status()
         return resp.json()
+
+    async def async_fetch_lists(self) -> list:
+        """Async wrapper för att hämta listor utan att blockera HA."""
+        return await self.hass.async_add_executor_job(self.fetch_lists)
 
     def add_item(self, list_id: str, text: str) -> dict:
         """Lägg till en vara i en specifik lista."""
@@ -72,4 +78,5 @@ class ICAApi:
             "source": "HomeAssistant",
         }
         resp = self.session.post(url, headers=headers, json=payload)
+        resp.raise_for_status()
         return resp.json()
