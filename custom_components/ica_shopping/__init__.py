@@ -1,26 +1,21 @@
+import logging
 import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
-
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
-from homeassistant.helpers.discovery import async_load_platform
-
+from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_USERNAME): cv.string,
-                vol.Required(CONF_PASSWORD): cv.string,
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
+_LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = vol.Schema({
+    DOMAIN: vol.Schema({
+        vol.Required(CONF_USERNAME): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
+    })
+}, extra=vol.ALLOW_EXTRA)
 
 async def async_setup(hass, config):
-    """Set up the ICA Shopping integration from YAML config."""
+    """Set up ICA Shopping integration."""
     conf = config.get(DOMAIN)
     if not conf:
         return True
@@ -28,34 +23,39 @@ async def async_setup(hass, config):
     username = conf[CONF_USERNAME]
     password = conf[CONF_PASSWORD]
 
-    # Initiera API‐klienten
     api = ICAApi(hass, username, password)
     await api.async_initialize()
 
-    # Spara klienten så sensor‐plattformen kan nå den
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
-    # Ladda sensor‐plattformen
-    hass.async_create_task(
-        async_load_platform(hass, "sensor", DOMAIN, {}, config)
-    )
+    # Skapa dummy-sensor
+    hass.states.async_set("sensor.ica_shopping_list", "No data", {
+        "items": [],
+        "updated_manually": True
+    })
 
-    # Registrera tjänst för att lägga till vara
-    def handle_add_item(call):
-        list_id = call.data["list_id"]
-        text = call.data["text"]
-        api.add_item(list_id, text)
+    def handle_refresh(call):
+        """Manuell uppdatering av shoppinglista via tjänst."""
+        try:
+            api._token = None  # Tvinga ny token
+            lists = api.fetch_lists()
+            if lists:
+                main_list = lists[0]
+                items = [item["text"] for item in main_list.get("items", [])]
+                hass.states.async_set("sensor.ica_shopping_list", len(items), {
+                    "items": items,
+                    "list_name": main_list.get("name"),
+                    "updated_manually": True
+                })
+                _LOGGER.info("ICA list updated: %s", main_list.get("name"))
+            else:
+                hass.states.async_set("sensor.ica_shopping_list", 0, {
+                    "items": [],
+                    "list_name": "None",
+                    "updated_manually": True
+                })
+        except Exception as e:
+            _LOGGER.error("ICA refresh failed: %s", e)
 
-    hass.services.async_register(
-        DOMAIN,
-        "add_item",
-        handle_add_item,
-        schema=vol.Schema(
-            {
-                vol.Required("list_id"): cv.string,
-                vol.Required("text"): cv.string,
-            }
-        ),
-    )
-
+    hass.services.async_register(DOMAIN, "refresh", handle_refresh)
     return True
