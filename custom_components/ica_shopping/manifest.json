@@ -1,9 +1,10 @@
 {
   "domain": "ica_shopping",
   "name": "ICA Shopping",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "documentation": "https://github.com/mellamomax/ica_shopping",
   "requirements": ["requests"],
   "dependencies": [],
-  "codeowners": ["@mellamomax"]
+  "codeowners": ["@mellamomax"],
+  "iot_class": "cloud_polling"
 }
