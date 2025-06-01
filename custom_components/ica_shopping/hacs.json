@@ -1,0 +1,7 @@
+{
+  "name": "ICA Shopping",
+  "content_in_root": false,
+  "domain": "ica_shopping",
+  "zip_release": false,
+  "filename": "custom_components/ica_shopping/manifest.json"
+}
