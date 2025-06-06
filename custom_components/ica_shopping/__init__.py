@@ -42,7 +42,15 @@ async def async_setup(hass, config):
                 list_id = lst.get("id")
                 safe_id = list_id.replace("-", "_").lower()
                 entity_id = f"sensor.ica_shopping_{safe_id}"
-                items = [item["text"] for item in lst.get("items", [])]
+
+                # Logga dåliga items (om några)
+                for item in lst.get("items", []):
+                    if not isinstance(item, dict) or "text" not in item:
+                        _LOGGER.warning("Ignorerad item i listan: %s", item)
+
+                # Filtrera bort dåliga items och skapa lista
+                items = [item["text"] for item in lst.get("items", [])
+                         if isinstance(item, dict) and "text" in item]
 
                 hass.states.async_set(entity_id, len(items), {
                     "items": items,
@@ -55,6 +63,7 @@ async def async_setup(hass, config):
 
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
+
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
