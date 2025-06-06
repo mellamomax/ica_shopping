@@ -26,7 +26,7 @@ async def async_setup(hass, config):
     password = conf[CONF_PASSWORD]
 
     api = ICAApi(hass, username, password)
-    await api.async_initialize()
+    # await api.async_initialize()
 
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
