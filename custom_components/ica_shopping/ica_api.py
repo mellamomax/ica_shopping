@@ -34,15 +34,15 @@ class ICAApi:
         }
 
     def fetch_lists(self) -> list:
-        """Hämtar shoppinglistor från ICA."""
         headers = self.get_headers()
-        try:
-            resp = self.session.get(API_LIST_ALL, headers=headers, timeout=10)
-            resp.raise_for_status()
-            return resp.json()
-        except requests.exceptions.RequestException as e:
-            _LOGGER.error("Fel vid hämtning av listor: %s", e)
-            return []
-        except Exception:
-            _LOGGER.error("Ogiltigt JSON-svar från ICA: %s", resp.text)
-            return []
+        resp = self.session.get(API_LIST_ALL, headers=headers)
+        _LOGGER.debug("Shoppinglist response: %s", resp.text)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Om ICA bara har en lista (vanligt), packa den i ett list-objekt
+        return [{
+            "id": "main",
+            "items": data  # ← Hela listan är items
+        }]
+
