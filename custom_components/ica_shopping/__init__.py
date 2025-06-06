@@ -36,30 +36,34 @@ async def async_setup(hass, config):
         "updated_manually": True
     })
 
+
     def handle_refresh(call):
         """Manuell uppdatering av shoppinglista via tjänst."""
         _LOGGER.debug("ICA refresh triggered")
         try:
             api._token = None  # Tvinga ny token
             lists = api.fetch_lists()
-            if lists:
-                main_list = lists[0]
-                items = [item["text"] for item in main_list.get("items", [])]
-                hass.states.async_set("sensor.ica_shopping_list", len(items), {
+
+            if not lists:
+                _LOGGER.warning("No shopping lists found")
+                return
+
+            for lst in lists:
+                list_id = lst.get("id")
+                entity_id = f"sensor.ica_shopping_{list_id}"
+                items = [item["text"] for item in lst.get("items", [])]
+
+                hass.states.async_set(entity_id, len(items), {
                     "items": items,
-                    "list_name": main_list.get("name"),
+                    "items_string": ", ".join(items),
+                    "list_name": lst.get("name"),
                     "updated_manually": True
                 })
-                _LOGGER.info("ICA list updated: %s", main_list.get("name"))
-            else:
-                hass.states.async_set("sensor.ica_shopping_list", 0, {
-                    "items": [],
-                    "list_name": "None",
-                    "updated_manually": True
-                })
+
+                _LOGGER.info("Updated sensor: %s (%s)", lst.get("name"), entity_id)
+
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
-
 
     def handle_add_item(call):
         """Lägg till vara i en lista via tjänst."""
