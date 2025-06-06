@@ -26,24 +26,14 @@ async def async_setup(hass, config):
     password = conf[CONF_PASSWORD]
 
     api = ICAApi(hass, username, password)
-    # await api.async_initialize()
-
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
-
-    # Skapa dummy-sensor
-    hass.states.async_set("sensor.ica_shopping_list", "No data", {
-        "items": [],
-        "updated_manually": True
-    })
-
 
     def handle_refresh(call):
         """Manuell uppdatering av shoppinglista via tjänst."""
         _LOGGER.debug("ICA refresh triggered")
-        try:
-            api._token = None  # Tvinga ny token
-            lists = api.fetch_lists()
 
+        try:
+            lists = api.fetch_lists()
             if not lists:
                 _LOGGER.warning("No shopping lists found")
                 return
@@ -66,26 +56,17 @@ async def async_setup(hass, config):
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
 
-    def handle_add_item(call):
-        """Lägg till vara i en lista via tjänst."""
-        try:
-            list_id = call.data["list_id"]
-            text = call.data["text"]
-            api.add_item(list_id, text)
-            _LOGGER.info("Item '%s' added to list %s", text, list_id)
-        except Exception as e:
-            _LOGGER.error("Failed to add item: %s", e)
-
-    hass.services.async_register(
-        DOMAIN,
-        "add_item",
-        handle_add_item,
-        schema=vol.Schema({
-            vol.Required("list_id"): cv.string,
-            vol.Required("text"): cv.string,
-        }),
-    )
-
-
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
+
+    # Om du inte använder add_item längre, ta bort helt eller kommentera bort det
+    # hass.services.async_register(
+    #     DOMAIN,
+    #     "add_item",
+    #     handle_add_item,
+    #     schema=vol.Schema({
+    #         vol.Required("list_id"): cv.string,
+    #         vol.Required("text"): cv.string,
+    #     }),
+    # )
+
     return True
