@@ -50,7 +50,8 @@ async def async_setup(hass, config):
 
             for lst in lists:
                 list_id = lst.get("id")
-                entity_id = f"sensor.ica_shopping_{list_id}"
+                safe_id = list_id.replace("-", "_").lower()
+                entity_id = f"sensor.ica_shopping_{safe_id}"
                 items = [item["text"] for item in lst.get("items", [])]
 
                 hass.states.async_set(entity_id, len(items), {
