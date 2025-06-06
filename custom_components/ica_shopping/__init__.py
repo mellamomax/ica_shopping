@@ -34,11 +34,17 @@ async def async_setup(hass, config):
 
         try:
             lists = api.fetch_lists()
+            _LOGGER.debug("Fetched shopping lists: %s", lists)
+
             if not lists:
                 _LOGGER.warning("No shopping lists found")
                 return
 
             for lst in lists:
+                if "rows" not in lst:
+                    _LOGGER.warning("List saknar 'rows': %s", lst)
+                    continue
+
                 list_id = lst.get("id")
                 safe_id = list_id.replace("-", "_").lower()
                 entity_id = f"sensor.ica_shopping_{safe_id}"
@@ -53,24 +59,10 @@ async def async_setup(hass, config):
                     "updated_manually": True
                 })
 
-                _LOGGER.info("Updated sensor: %s (%s)", lst.get("name"), entity_id)
+                _LOGGER.info("Updated sensor: %s (%s)", lst.get("name", "Unnamed"), entity_id)
 
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
 
-
-
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
-
-    # Om du inte använder add_item längre, ta bort helt eller kommentera bort det
-    # hass.services.async_register(
-    #     DOMAIN,
-    #     "add_item",
-    #     handle_add_item,
-    #     schema=vol.Schema({
-    #         vol.Required("list_id"): cv.string,
-    #         vol.Required("text"): cv.string,
-    #     }),
-    # )
-
     return True
