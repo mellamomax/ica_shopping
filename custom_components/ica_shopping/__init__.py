@@ -41,28 +41,30 @@ async def async_setup(hass, config):
                 return
 
             for lst in lists:
-                if "rows" not in lst:
-                    _LOGGER.warning("List saknar 'rows': %s", lst)
-                    continue
+                for real_list in lst.get("items", []):
+                    if "rows" not in real_list:
+                        _LOGGER.warning("List saknar 'rows': %s", real_list)
+                        continue
 
-                list_id = lst.get("id")
-                safe_id = list_id.replace("-", "_").lower()
-                entity_id = f"sensor.ica_shopping_{safe_id}"
+                    list_id = real_list.get("id")
+                    safe_id = list_id.replace("-", "_").lower()
+                    entity_id = f"sensor.ica_shopping_{safe_id}"
 
-                rows = lst.get("rows", [])
-                items = [row["text"] for row in rows if isinstance(row, dict) and "text" in row]
+                    rows = real_list.get("rows", [])
+                    items = [row["text"] for row in rows if isinstance(row, dict) and "text" in row]
 
-                hass.states.async_set(entity_id, len(items), {
-                    "items": items,
-                    "items_string": ", ".join(items),
-                    "list_name": lst.get("name", "ICA Lista"),
-                    "updated_manually": True
-                })
+                    hass.states.async_set(entity_id, len(items), {
+                        "items": items,
+                        "items_string": ", ".join(items),
+                        "list_name": real_list.get("name", "ICA Lista"),
+                        "updated_manually": True
+                    })
 
-                _LOGGER.info("Updated sensor: %s (%s)", lst.get("name", "Unnamed"), entity_id)
+                    _LOGGER.info("Updated sensor: %s (%s)", real_list.get("name", "Unnamed"), entity_id)
 
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
+
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
     return True
