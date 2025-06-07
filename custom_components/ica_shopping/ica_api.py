@@ -1,66 +1,94 @@
-import requests
-import yaml
 import logging
-from homeassistant.exceptions import HomeAssistantError
+import yaml
+import aiohttp
+import aiofiles
+
 from .const import API_LIST_ALL, API_ADD_ROW, API_REMOVE_ROW
 
 _LOGGER = logging.getLogger(__name__)
 
 class ICAApi:
-    def __init__(self, hass, username: str, password: str):
+    def __init__(self, hass, username, password):
         self.hass = hass
-        self.session = requests.Session()
+        self.username = username
+        self.password = password
 
-    def _get_token_from_secrets(self):
+    async def _get_token_from_secrets_async(self):
+        path = self.hass.config.path("secrets.yaml")
         try:
-            path = self.hass.config.path("secrets.yaml")
-            with open(path, "r") as f:
-                secrets = yaml.safe_load(f)
-            token = secrets.get("ica_access_token")
-            if not token:
-                raise HomeAssistantError("Access token saknas i secrets.yaml")
-            return token
+            async with aiofiles.open(path, "r") as f:
+                raw = await f.read()
+                secrets = yaml.safe_load(raw)
+            return secrets.get("ica_token")
         except Exception as e:
-            _LOGGER.error("Misslyckades läsa access token: %s", e)
-            raise HomeAssistantError("Kunde inte läsa ICA access token")
+            _LOGGER.error("Failed to read secrets.yaml: %s", e)
+            return None
 
-    def get_headers(self) -> dict:
-        token = self._get_token_from_secrets()
-        return {
+    async def fetch_lists(self):
+        token = await self._get_token_from_secrets_async()
+        if not token:
+            return []
+
+        headers = {
             "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
 
-    def fetch_lists(self) -> list:
-        headers = self.get_headers()
-        resp = self.session.get(API_LIST_ALL, headers=headers)
-        _LOGGER.debug("Shoppinglist response: %s", resp.text)
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(API_LIST_ALL, headers=headers) as resp:
+                    if resp.status != 200:
+                        _LOGGER.error("ICA API error: %s", resp.status)
+                        return []
+                    return await resp.json()
+        except Exception as e:
+            _LOGGER.error("Failed to fetch ICA list: %s", e)
+            return []
 
-        # Om ICA bara har en lista (vanligt), packa den i ett list-objekt
-        return [{
-            "id": "main",
-            "items": data
-        }]
+    async def add_item(self, list_id: str, item: str):
+        token = await self._get_token_from_secrets_async()
+        if not token:
+            return False
 
-    def add_item(self, list_id: str, text: str) -> dict:
-        headers = self.get_headers()
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        data = {"text": item}
         url = API_ADD_ROW.format(list_id=list_id)
-        payload = {
-            "text": text,
-            "strikedOver": False,
-            "source": "HomeAssistant",
-        }
-        resp = self.session.post(url, headers=headers, json=payload)
-        _LOGGER.debug("Add item response: %s", resp.text)
-        resp.raise_for_status()
-        return resp.json()
 
-    def remove_item(self, list_id: str, row_id: str) -> None:
-        headers = self.get_headers()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=data) as resp:
+                    if resp.status != 200:
+                        _LOGGER.error("Failed to add item to ICA: %s", resp.status)
+                        return False
+                    return True
+        except Exception as e:
+            _LOGGER.error("Error adding item to ICA: %s", e)
+            return False
+
+    async def remove_item(self, list_id: str, row_id: str):
+        token = await self._get_token_from_secrets_async()
+        if not token:
+            return False
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json"
+        }
+
         url = API_REMOVE_ROW.format(list_id=list_id, row_id=row_id)
-        resp = self.session.delete(url, headers=headers)
-        _LOGGER.debug("Remove item response: %s", resp.text)
-        resp.raise_for_status()
-        return
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.delete(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        _LOGGER.error("Failed to remove item from ICA: %s", resp.status)
+                        return False
+                    return True
+        except Exception as e:
+            _LOGGER.error("Error removing item from ICA: %s", e)
+            return False
