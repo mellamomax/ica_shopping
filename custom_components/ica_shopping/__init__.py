@@ -40,14 +40,28 @@ async def async_setup(hass, config):
 
         try:
             # Hämta ICA-data
-            lists = await api.fetch_lists()
+            lists = api.fetch_lists()
             _LOGGER.debug("Fetched shopping lists: %s", lists)
 
             if not lists:
                 _LOGGER.warning("No shopping lists found")
                 return
 
-            # Hämta Google Keep-data
+            # Hårdkoda ICA-list-ID
+            target_ica_id = "55c428d8-8b05-48a7-b2a2-f84e0d91d155"
+
+            real_list = None
+            for lst in lists:
+                for l in lst.get("items", []):
+                    if l.get("id") == target_ica_id:
+                        real_list = l
+                        break
+
+            if not real_list:
+                _LOGGER.warning("Hittade ingen lista med ID %s", target_ica_id)
+                return
+
+            # Hämta Keep-data
             keep_response = await hass.services.async_call(
                 "todo", "get_items",
                 {"entity_id": "todo.google_keep_inkopslista"},
@@ -62,61 +76,56 @@ async def async_setup(hass, config):
 
             _LOGGER.debug("Current Google Keep items: %s", keep_items)
 
-            for lst in lists:
-                for real_list in lst.get("items", []):
-                    if "rows" not in real_list:
-                        _LOGGER.warning("List saknar 'rows': %s", real_list)
-                        continue
+            # Hantera ICA-items
+            rows = real_list.get("rows", [])
+            ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
+            ica_lower = [item.lower() for item in ica_items]
 
-                    list_id = real_list.get("id")
-                    safe_id = list_id.replace("-", "_").lower()
-                    entity_id = f"sensor.ica_shopping_{safe_id}"
+            # Uppdatera sensor
+            entity_id = "sensor.ica_shopping_55c428d8_8b05_48a7_b2a2_f84e0d91d155"
+            hass.states.async_set(entity_id, len(ica_items), {
+                "Namn": real_list.get("name", "ICA Lista"),
+                "Varor": ", ".join(ica_items)
+            })
 
-                    rows = real_list.get("rows", [])
-                    ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
+            _LOGGER.info("Updated sensor: %s (%s)", real_list.get("name", "Unnamed"), entity_id)
 
-                    # Uppdatera sensor
-                    hass.states.async_set(entity_id, len(ica_items), {
-                        "Namn": real_list.get("name", "ICA Lista"),
-                        "Varor": ", ".join(ica_items)
-                    })
+            # Synka till Keep
+            to_add = [item for item in ica_items if item.lower() not in keep_items]
+            to_remove = [item for item in keep_items if item not in ica_lower]
 
-                    _LOGGER.info("Updated sensor: %s (%s)", real_list.get("name", "Unnamed"), entity_id)
+            _LOGGER.debug("Items to add to Keep: %s", to_add)
+            _LOGGER.debug("Items to remove from Keep: %s", to_remove)
 
-                    # Synka till Keep
-                    ica_lower = [item.lower() for item in ica_items]
+            for item in to_add:
+                await hass.services.async_call(
+                    "todo", "add_item",
+                    {
+                        "entity_id": "todo.google_keep_inkopslista",
+                        "item": item
+                    }
+                )
+                _LOGGER.info("Added '%s' to Google Keep", item)
 
-                    to_add = [item for item in ica_items if item.lower() not in keep_items]
-                    to_remove = [item for item in keep_items if item not in ica_lower]
-
-                    _LOGGER.debug("Items to add to Keep: %s", to_add)
-                    _LOGGER.debug("Items to remove from Keep: %s", to_remove)
-
-                    for item in to_add:
-                        await hass.services.async_call(
-                            "todo", "add_item",
-                            {
-                                "entity_id": "todo.google_keep_inkopslista",
-                                "item": item
-                            }
-                        )
-                        _LOGGER.info("Added '%s' to Google Keep", item)
-
-                    for item in to_remove:
-                        await hass.services.async_call(
-                            "todo", "remove_item",
-                            {
-                                "entity_id": "todo.google_keep_inkopslista",
-                                "item": item
-                            }
-                        )
-                        _LOGGER.info("Removed '%s' from Google Keep", item)
+            for item in to_remove:
+                await hass.services.async_call(
+                    "todo", "remove_item",
+                    {
+                        "entity_id": "todo.google_keep_inkopslista",
+                        "item": item
+                    }
+                )
+                _LOGGER.info("Removed '%s' from Google Keep", item)
 
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
 
 
+
     
+
+
+
 
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
