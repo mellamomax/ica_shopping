@@ -39,9 +39,9 @@ async def async_setup(hass, config):
 
         try:
             # Hämta ICA-data
+            _LOGGER.debug("⏳ Hämtar ICA-listor med fetch_lists()...")
             lists = await api.fetch_lists()
-            _LOGGER.debug("Fetched shopping lists: %s", lists)
-            _LOGGER.debug("🔍 Resultat från fetch_lists(): %s", lists)
+            _LOGGER.debug("✅ Klar med fetch_lists(), resultat: %s", lists)
 
             if not lists:
                 _LOGGER.warning("No shopping lists found")
