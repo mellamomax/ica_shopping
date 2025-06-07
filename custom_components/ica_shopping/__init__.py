@@ -40,7 +40,7 @@ async def async_setup(hass, config):
 
         try:
             # Hämta ICA-data
-            lists = api.fetch_lists()
+            lists = await api.fetch_lists()
             _LOGGER.debug("Fetched shopping lists: %s", lists)
 
             if not lists:
