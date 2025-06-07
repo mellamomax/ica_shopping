@@ -63,14 +63,16 @@ async def async_setup(hass, config):
                 blocking=True,
                 return_response=True
             )
+            
+            _LOGGER.debug("📥 Rådata från todo.get_items: %s", keep_response)  # <-- NY
+
 
             if not keep_response or not isinstance(keep_response, list):
-                _LOGGER.warning("📭 Inga Keep-items hittades")
+                _LOGGER.warning("📭 Inga Keep-items hittades (tom eller fel typ)")
                 keep_items = []
             else:
                 keep_items = [item.get("summary", "").strip().lower() for item in keep_response]
-
-            _LOGGER.debug("🧾 Aktuella Keep-items: %s", keep_items)
+                _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_items)  # <-- NY
 
             rows = real_list.get("rows", [])
             ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
