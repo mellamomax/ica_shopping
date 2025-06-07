@@ -35,10 +35,12 @@ async def async_setup(hass, config):
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def save_synced_list(items: list[str]):
+        _LOGGER.debug("📝 Sparar synkad lista till storage: %s", items)
         await store.async_save({"items": items})
 
     async def load_synced_list() -> list[str]:
         data = await store.async_load()
+        _LOGGER.debug("📦 Läser synkad lista från storage: %s", data)
         return data["items"] if data and "items" in data else []
 
     def handle_refresh(call):
@@ -75,6 +77,7 @@ async def async_setup(hass, config):
             _LOGGER.error("ICA refresh failed: %s", e)
 
     async def handle_google_keep_add_item(event):
+        _LOGGER.debug("📥 add_item event mottaget: %s", event.as_dict())
         if event.origin != "local":
             return
 
@@ -97,6 +100,7 @@ async def async_setup(hass, config):
             await save_synced_list(synced)
 
     async def handle_google_keep_remove_item(event):
+        _LOGGER.debug("🗑️ remove_item event mottaget: %s", event.as_dict())
         if event.origin != "local":
             return
 
