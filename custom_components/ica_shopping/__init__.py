@@ -1,44 +1,43 @@
-    import logging
-    import voluptuous as vol
-    from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
-    from homeassistant.helpers import config_validation as cv
-    from homeassistant.helpers.storage import Store
-    from .const import DOMAIN, DATA_ICA
-    from .ica_api import ICAApi
+import logging
+import voluptuous as vol
+from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.storage import Store
+from .const import DOMAIN, DATA_ICA
+from .ica_api import ICAApi
 
-    _LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
-    CONFIG_SCHEMA = vol.Schema({
-        DOMAIN: vol.Schema({
-            vol.Required(CONF_USERNAME): cv.string,
-            vol.Required(CONF_PASSWORD): cv.string,
-        })
-    }, extra=vol.ALLOW_EXTRA)
+CONFIG_SCHEMA = vol.Schema({
+    DOMAIN: vol.Schema({
+        vol.Required(CONF_USERNAME): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
+    })
+}, extra=vol.ALLOW_EXTRA)
 
-    STORAGE_VERSION = 1
-    STORAGE_KEY = "ica_keep_synced_list"
+STORAGE_VERSION = 1
+STORAGE_KEY = "ica_keep_synced_list"
 
-    async def async_setup(hass, config):
-        """Set up ICA Shopping integration."""
-        _LOGGER.debug("Setting up ICA Shopping...")
-        conf = config.get(DOMAIN)
-        if not conf:
-            _LOGGER.warning("ICA config not found")
-            return True
+async def async_setup(hass, config):
+    """Set up ICA Shopping integration."""
+    _LOGGER.debug("Setting up ICA Shopping...")
+    conf = config.get(DOMAIN)
+    if not conf:
+        _LOGGER.warning("ICA config not found")
+        return True
 
-        username = conf[CONF_USERNAME]
-        password = conf[CONF_PASSWORD]
+    username = conf[CONF_USERNAME]
+    password = conf[CONF_PASSWORD]
 
-        api = ICAApi(hass, username, password)
-        hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
+    api = ICAApi(hass, username, password)
+    hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
-        store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-
+    store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
 
     async def handle_refresh(call):
         _LOGGER.debug("ICA refresh triggered")
 
-        try:    
+        try:
             # Hämta ICA-data
             lists = await api.fetch_lists()
             _LOGGER.debug("Fetched shopping lists: %s", lists)
@@ -121,10 +120,6 @@
         except Exception as e:
             _LOGGER.error("ICA refresh failed: %s", e)
 
+    hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
-
-
-
-        hass.services.async_register(DOMAIN, "refresh", handle_refresh)
-
-        return True
+    return True
