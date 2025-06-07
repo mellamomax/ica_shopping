@@ -40,10 +40,25 @@ class ICAApi:
                     if resp.status != 200:
                         _LOGGER.error("ICA API error: %s", resp.status)
                         return []
-                    return await resp.json()
+
+                    result = await resp.json()
+                    _LOGGER.debug("📦 ICA API raw response: %s", result)
+
+                    # Om svaret är en dict med 'items' – returnera listan direkt
+                    if isinstance(result, dict) and "items" in result:
+                        return result["items"]
+
+                    # Om svaret redan är en lista – returnera som är
+                    if isinstance(result, list):
+                        return result
+
+                    _LOGGER.error("❗ Oväntat format på ICA-response: %s", type(result))
+                    return []
+
         except Exception as e:
             _LOGGER.error("Failed to fetch ICA list: %s", e)
             return []
+
 
     async def add_item(self, list_id: str, item: str):
         token = await self._get_token_from_secrets_async()
