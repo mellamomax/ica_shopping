@@ -103,3 +103,37 @@ class ICAApi:
         except Exception as e:
             _LOGGER.error("❗ Error removing item from ICA: %s", e)
             return False
+            
+    async def add_to_list(self, text: str):
+        token = await self._get_token_from_secrets_async()
+        if not token:
+            _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
+            return False
+
+        list_id = "55c428d8-8b05-48a7-b2a2-f84e0d91d155"  # Gärna lyft till konstant
+        url = f"https://handla.api.ica.se/api/graphql/lists/{list_id}/items"
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "rows": [{"text": text}]
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers=headers, json=payload) as resp:
+                    _LOGGER.debug("➕ Försöker lägga till '%s' i ICA (%s)", text, resp.status)
+                    if resp.status == 200:
+                        _LOGGER.info("✅ Lade till '%s' i ICA-listan", text)
+                        return True
+                    else:
+                        body = await resp.text()
+                        _LOGGER.warning("❗ Kunde inte lägga till i ICA (%s): %s", resp.status, body)
+                        return False
+        except Exception as e:
+            _LOGGER.error("❗ Fel vid add_to_list('%s'): %s", text, e)
+            return False

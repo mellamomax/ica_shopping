@@ -116,6 +116,48 @@ async def async_setup(hass, config):
 
 
 
+    async def handle_keep_add_item(event):
+        data = event.data
+        service_data = data.get("service_data", {})
+        entity_ids = service_data.get("entity_id", [])
+        if isinstance(entity_ids, str):
+            entity_ids = [entity_ids]
+
+        if "todo.google_keep_inkopslista" not in entity_ids:
+            return
+
+        origin = data.get("origin", "UNKNOWN")
+
+        # Hämta senaste Keep-listan
+        service_result = await hass.services.async_call(
+            "todo", "get_items",
+            {"entity_id": "todo.google_keep_inkopslista"},
+            blocking=True,
+            return_response=True
+        )
+
+        items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
+        summaries = [item.get("summary", "").strip() for item in items if isinstance(item, dict)]
+        
+        # Hämta ICA-listan
+        ica_list = await api.fetch_lists()
+        rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "55c428d8-8b05-48a7-b2a2-f84e0d91d155"), [])
+        ica_items = [row["text"].strip().lower() for row in rows if isinstance(row, dict) and "text" in row]
+
+        # Lägg till de som finns i Keep men inte i ICA
+        for summary in summaries:
+            if summary.lower() not in ica_items:
+                try:
+                    await api.add_to_list(summary)
+                    _LOGGER.info("📥 (origin=%s) Lade till '%s' i ICA", origin, summary)
+                except Exception as e:
+                    _LOGGER.error("💥 Kunde inte lägga till '%s' i ICA: %s", summary, e)
+
+
+
+    hass.bus.async_listen("call_service", handle_keep_add_item)
+
+
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
     return True
