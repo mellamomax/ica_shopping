@@ -47,7 +47,12 @@ async def async_setup(hass, config):
 
             target_ica_id = "55c428d8-8b05-48a7-b2a2-f84e0d91d155"
 
-            real_list = next((l for l in lists if l.get("id") == target_ica_id), None)
+            real_list = None
+            for l in lists:
+                if l.get("id") == target_ica_id:
+                    real_list = l
+                    break
+
             if not real_list:
                 _LOGGER.warning("❌ Hittade inte lista med ID %s", target_ica_id)
                 return
@@ -58,18 +63,17 @@ async def async_setup(hass, config):
                 blocking=True,
                 return_response=True
             )
+
             _LOGGER.debug("📥 DEBUG Keep get_items raw response: %s", service_result)
 
-            raw_items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
-            keep_items = [
-                {
-                    "summary": item.get("summary", "").strip(),
-                    "uid": item.get("uid", "")
-                }
-                for item in raw_items if item.get("summary")
-            ]
-            keep_summaries = [item["summary"].lower() for item in keep_items]
-            _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_items)
+            items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
+            if not isinstance(items, list):
+                _LOGGER.warning("📭 Inga Keep-items hittades (tom eller fel typ)")
+                keep_items = []
+            else:
+                keep_items = items
+                keep_summaries = [item.get("summary", "").strip().lower() for item in items]
+                _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_summaries)
 
             rows = real_list.get("rows", [])
             ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
@@ -80,13 +84,14 @@ async def async_setup(hass, config):
                 "Namn": real_list.get("name", "ICA Lista"),
                 "Varor": ", ".join(ica_items)
             })
+
             _LOGGER.info("📡 Uppdaterade sensor: %s (%s)", real_list.get("name", "Unnamed"), entity_id)
 
             to_add = [item for item in ica_items if item.lower() not in keep_summaries]
-            to_remove = [item for item in keep_items if item["summary"].lower() not in ica_lower]
+            to_remove = [item for item in keep_items if item.get("summary", "").strip().lower() not in ica_lower]
 
             _LOGGER.debug("➕ Lägg till i Keep: %s", to_add)
-            _LOGGER.debug("➖ Ta bort från Keep: %s", to_remove)
+            _LOGGER.debug("➖ Ta bort från Keep: %s", [item.get("summary") for item in to_remove])
 
             for item in to_add:
                 await hass.services.async_call("todo", "add_item", {
@@ -96,14 +101,19 @@ async def async_setup(hass, config):
                 _LOGGER.info("✅ Lade till '%s' i Keep", item)
 
             for item in to_remove:
+                summary = item.get("summary")
+                if not summary:
+                    _LOGGER.warning("⚠️ Saknar 'summary' för att ta bort item: %s", item)
+                    continue
                 await hass.services.async_call("todo", "remove_item", {
                     "entity_id": "todo.google_keep_inkopslista",
-                    "uid": item["uid"]
+                    "item": summary
                 })
-                _LOGGER.info("🗑️ Tog bort '%s' från Keep (uid: %s)", item["summary"], item["uid"])
+                _LOGGER.info("🗑️ Tog bort '%s' från Keep", summary)
 
         except Exception as e:
             _LOGGER.error("💥 ICA refresh failed: %s", e)
+
 
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
