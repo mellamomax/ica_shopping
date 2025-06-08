@@ -45,7 +45,7 @@ async def async_setup(hass, config):
                 _LOGGER.warning("🚫 Inga shoppinglistor hittades")
                 return
 
-            target_ica_id = "55c428d8-8b05-48a7-b2a2-f84e0d91d155"
+            target_ica_id = "a441f64a-a833-4eb1-81a5-4a6d1a86af83"
 
             real_list = None
             for l in lists:
@@ -89,6 +89,12 @@ async def async_setup(hass, config):
 
             to_add = [item for item in ica_items if item.lower() not in keep_summaries]
             to_remove = [item for item in keep_items if item.get("summary", "").strip().lower() not in ica_lower]
+
+            MAX_ITEMS_PER_REFRESH = 200
+            if len(to_add) > MAX_ITEMS_PER_REFRESH:
+                _LOGGER.warning("⚠️ För många varor att lägga till (%s). Begränsar till %s första.", len(to_add), MAX_ITEMS_PER_REFRESH)
+                to_add = to_add[:MAX_ITEMS_PER_REFRESH]
+
 
             _LOGGER.debug("➕ Lägg till i Keep: %s", to_add)
             _LOGGER.debug("➖ Ta bort från Keep: %s", [item.get("summary") for item in to_remove])
@@ -139,9 +145,15 @@ async def async_setup(hass, config):
         items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
         summaries = [item.get("summary", "").strip() for item in items if isinstance(item, dict)]
         
+        MAX_ITEMS_FROM_KEEP = 100
+        if len(summaries) > MAX_ITEMS_FROM_KEEP:
+            _LOGGER.warning("⚠️ För många Keep-items (%s). Begränsar till %s första.", len(summaries), MAX_ITEMS_FROM_KEEP)
+            summaries = summaries[:MAX_ITEMS_FROM_KEEP]
+
+        
         # Hämta ICA-listan
         ica_list = await api.fetch_lists()
-        rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "55c428d8-8b05-48a7-b2a2-f84e0d91d155"), [])
+        rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "a441f64a-a833-4eb1-81a5-4a6d1a86af83"), [])
         ica_items = [row["text"].strip().lower() for row in rows if isinstance(row, dict) and isinstance(row.get("text"), str)]
 
         # Lägg till de som finns i Keep men inte i ICA
