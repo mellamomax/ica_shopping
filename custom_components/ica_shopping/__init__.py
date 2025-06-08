@@ -63,17 +63,17 @@ async def async_setup(hass, config):
                 blocking=True,
                 return_response=True
             )
-            
-            _LOGGER.warning("DEBUG Keep get_items raw response: %s", service_result)
 
+            _LOGGER.debug("📥 DEBUG Keep get_items raw response: %s", service_result)
 
-
-            if not keep_response or not isinstance(keep_response, list):
+            # Plocka ut listan från response
+            items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
+            if not isinstance(items, list):
                 _LOGGER.warning("📭 Inga Keep-items hittades (tom eller fel typ)")
                 keep_items = []
             else:
-                keep_items = [item.get("summary", "").strip().lower() for item in keep_response]
-                _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_items)  # <-- NY
+                keep_items = [item.get("summary", "").strip().lower() for item in items]
+                _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_items)
 
             rows = real_list.get("rows", [])
             ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
@@ -111,4 +111,6 @@ async def async_setup(hass, config):
             _LOGGER.error("💥 ICA refresh failed: %s", e)
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
+
     return True
+
