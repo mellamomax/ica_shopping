@@ -76,7 +76,7 @@ async def async_setup(hass, config):
                 _LOGGER.debug("🧾 Extraherade Keep-items: %s", keep_summaries)
 
             rows = real_list.get("rows", [])
-            ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and "text" in row]
+            ica_items = [row["text"].strip() for row in rows if isinstance(row, dict) and isinstance(row.get("text"), str)]
             ica_lower = [item.lower() for item in ica_items]
 
             entity_id = f"sensor.ica_shopping_{target_ica_id.replace('-', '_')}"
@@ -142,7 +142,7 @@ async def async_setup(hass, config):
         # Hämta ICA-listan
         ica_list = await api.fetch_lists()
         rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "55c428d8-8b05-48a7-b2a2-f84e0d91d155"), [])
-        ica_items = [row["text"].strip().lower() for row in rows if isinstance(row, dict) and "text" in row]
+        ica_items = [row["text"].strip().lower() for row in rows if isinstance(row, dict) and isinstance(row.get("text"), str)]
 
         # Lägg till de som finns i Keep men inte i ICA
         for summary in summaries:

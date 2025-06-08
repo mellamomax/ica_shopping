@@ -120,8 +120,9 @@ class ICAApi:
         }
 
         payload = {
-            "rows": [{"text": text}]
+          "text": text
         }
+
 
         try:
             async with aiohttp.ClientSession() as session:
