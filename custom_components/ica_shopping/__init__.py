@@ -57,14 +57,15 @@ async def async_setup(hass, config):
                 _LOGGER.warning("❌ Hittade inte lista med ID %s", target_ica_id)
                 return
 
-            keep_response = await hass.services.async_call(
+            service_result = await hass.services.async_call(
                 "todo", "get_items",
                 {"entity_id": "todo.google_keep_inkopslista"},
                 blocking=True,
                 return_response=True
             )
             
-            _LOGGER.debug("📥 Rådata från todo.get_items: %s", keep_response)  # <-- NY
+            _LOGGER.warning("DEBUG Keep get_items raw response: %s", service_result)
+
 
 
             if not keep_response or not isinstance(keep_response, list):
