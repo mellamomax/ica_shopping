@@ -45,7 +45,7 @@ async def async_setup(hass, config):
                 _LOGGER.warning("🚫 Inga shoppinglistor hittades")
                 return
 
-            target_ica_id = "a441f64a-a833-4eb1-81a5-4a6d1a86af83"
+            target_ica_id = "f47d30ed-2555-4f81-88fd-c6d8019c5516"
 
             real_list = None
             for l in lists:
@@ -144,26 +144,36 @@ async def async_setup(hass, config):
 
         items = service_result.get("todo.google_keep_inkopslista", {}).get("items", [])
         summaries = [item.get("summary", "").strip() for item in items if isinstance(item, dict)]
-        
+
         MAX_ITEMS_FROM_KEEP = 100
         if len(summaries) > MAX_ITEMS_FROM_KEEP:
             _LOGGER.warning("⚠️ För många Keep-items (%s). Begränsar till %s första.", len(summaries), MAX_ITEMS_FROM_KEEP)
             summaries = summaries[:MAX_ITEMS_FROM_KEEP]
 
-        
         # Hämta ICA-listan
         ica_list = await api.fetch_lists()
-        rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "a441f64a-a833-4eb1-81a5-4a6d1a86af83"), [])
+        rows = next((l.get("rows", []) for l in ica_list if l.get("id") == "f47d30ed-2555-4f81-88fd-c6d8019c5516"), [])
         ica_items = [row["text"].strip().lower() for row in rows if isinstance(row, dict) and isinstance(row.get("text"), str)]
 
-        # Lägg till de som finns i Keep men inte i ICA
-        for summary in summaries:
-            if summary.lower() not in ica_items:
-                try:
-                    await api.add_to_list(summary)
-                    _LOGGER.info("📥 (origin=%s) Lade till '%s' i ICA", origin, summary)
-                except Exception as e:
-                    _LOGGER.error("💥 Kunde inte lägga till '%s' i ICA: %s", summary, e)
+        # Skydd: max 250 varor i ICA
+        if len(rows) >= 250:
+            _LOGGER.warning("🛑 ICA-listan har redan %s varor. Inga fler skickas.", len(rows))
+            return
+
+        # Beräkna tillgängligt utrymme
+        available_space = 250 - len(rows)
+        to_add = [s for s in summaries if s.lower() not in ica_items]
+        to_add = to_add[:available_space]
+
+        _LOGGER.debug("➕ ICA tillägg planeras (%s): %s", len(to_add), to_add)
+
+        for summary in to_add:
+            try:
+                await api.add_to_list(summary)
+                _LOGGER.info("📥 (origin=%s) Lade till '%s' i ICA", origin, summary)
+            except Exception as e:
+                _LOGGER.error("💥 Kunde inte lägga till '%s' i ICA: %s", summary, e)
+
 
 
 

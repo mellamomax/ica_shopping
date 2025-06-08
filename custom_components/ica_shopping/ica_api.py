@@ -110,7 +110,7 @@ class ICAApi:
             _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
             return False
 
-        list_id = "a441f64a-a833-4eb1-81a5-4a6d1a86af83"
+        list_id = "f47d30ed-2555-4f81-88fd-c6d8019c5516"
         url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/list/{list_id}/row"
 
         headers = {
