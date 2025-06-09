@@ -1,6 +1,7 @@
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlow
+from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import selector
 import voluptuous as vol
 from typing import Any
 from .const import DOMAIN
@@ -10,19 +11,10 @@ class ICAConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
-            return self.async_create_entry(title=user_input["ica_list_id"], data=user_input)
-
-        # Hämta bara todo-entity IDs
-        entities = self.hass.states.async_entity_ids("todo")
-
-        # Bygg friendly name + ID-par för dropdown
-        choices = {}
-        for entity_id in entities:
-            state = self.hass.states.get(entity_id)
-            if state:
-                name = state.attributes.get("friendly_name", entity_id)
-                display = f"{name} ({entity_id})"
-                choices[display] = entity_id
+            return self.async_create_entry(
+                title=user_input["ica_list_id"],
+                data=user_input
+            )
 
         return self.async_show_form(
             step_id="user",
@@ -30,6 +22,37 @@ class ICAConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required("personnummer"): str,
                 vol.Required("pinkod"): str,
                 vol.Required("ica_list_id"): str,
-                vol.Optional("todo_entity_id", default=next(iter(choices.values()), "")): vol.In(choices),
+                vol.Optional("todo_entity_id"): selector({
+                    "entity": {
+                        "domain": "todo",
+                        "multiple": False
+                    }
+                }),
             }),
         )
+
+class ICAOptionsFlowHandler(OptionsFlow):
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required("personnummer", default=self.config_entry.data.get("personnummer", "")): str,
+                vol.Required("pinkod", default=self.config_entry.data.get("pinkod", "")): str,
+                vol.Required("ica_list_id", default=self.config_entry.data.get("ica_list_id", "")): str,
+                vol.Optional("todo_entity_id", default=self.config_entry.data.get("todo_entity_id", "")): selector({
+                    "entity": {
+                        "domain": "todo",
+                        "multiple": False
+                    }
+                }),
+            }),
+        )
+
+async def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> ICAOptionsFlowHandler:
+    return ICAOptionsFlowHandler(config_entry)
