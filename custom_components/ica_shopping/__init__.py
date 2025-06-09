@@ -4,6 +4,7 @@ from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
+from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
 
@@ -19,10 +20,11 @@ CONFIG_SCHEMA = vol.Schema({
 STORAGE_VERSION = 1
 STORAGE_KEY = "ica_keep_synced_list"
 
-# Max items limits
+# Constants
 MAX_ICA_ITEMS = 250
 MAX_KEEP_ITEMS = 100
 DEBOUNCE_SECONDS = 1
+TARGET_LIST_ID = "817e93f7-a47d-4ec4-8da2-ed94d8fb47a7"
 
 async def async_setup(hass, config):
     _LOGGER.debug("📦 Setting up ICA Shopping integration")
@@ -42,8 +44,62 @@ async def async_setup(hass, config):
     # --- REFRESH SERVICE HANDLER ---
     async def handle_refresh(call):
         _LOGGER.debug("🔄 ICA refresh triggered via service")
-        # original refresh logic goes here (fetch_lists, sync to Keep)
-        # ...
+        try:
+            # Fetch lists
+            lists = await api.fetch_lists()
+            real_list = next((l for l in lists if l.get("id") == TARGET_LIST_ID), None)
+            if not real_list:
+                _LOGGER.warning("❌ Kunde inte hitta ICA-lista %s", TARGET_LIST_ID)
+                return
+
+            rows = real_list.get("rows", [])
+            if len(rows) >= MAX_ICA_ITEMS:
+                _LOGGER.error("🚫 ICA-listan är full (%s varor). Refresh stoppad.", len(rows))
+                return
+
+            # Create/update sensor
+            ica_items = [row.get("text", "").strip() for row in rows if isinstance(row, dict)]
+            entity_id = f"sensor.ica_shopping_{TARGET_LIST_ID.replace('-', '_')}"
+            hass.states.async_set(
+                entity_id,
+                len(ica_items),
+                {"Namn": real_list.get("name", "ICA Lista"), "Varor": ", ".join(ica_items)}
+            )
+            _LOGGER.info("📡 Sensor uppdaterad: %s med %s varor", entity_id, len(ica_items))
+
+            # Sync ICA → Keep (original logic)
+            service_result = await hass.services.async_call(
+                "todo", "get_items",
+                {"entity_id": "todo.google_keep_inkopslista_2_0"},
+                blocking=True, return_response=True
+            )
+            keep_items = service_result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
+            keep_summaries = [i.get("summary", "").strip().lower() for i in keep_items if isinstance(i, dict)]
+
+            to_add = [item for item in ica_items if item.lower() not in keep_summaries]
+            to_remove = [i.get("summary") for i in keep_items if i.get("summary", "").strip().lower() not in [x.lower() for x in ica_items]]
+
+            # Limit additions
+            max_add = MAX_ICA_ITEMS - len(keep_items)
+            to_add = to_add[:max_add]
+
+            for item in to_add:
+                await hass.services.async_call(
+                    "todo", "add_item",
+                    {"entity_id": "todo.google_keep_inkopslista_2_0", "item": item}
+                )
+                _LOGGER.info("✅ Lagt till '%s' i Keep", item)
+
+            for summary in to_remove:
+                if summary:
+                    await hass.services.async_call(
+                        "todo", "remove_item",
+                        {"entity_id": "todo.google_keep_inkopslista_2_0", "item": summary}
+                    )
+                    _LOGGER.info("🗑️ Tagit bort '%s' från Keep", summary)
+
+        except Exception as e:
+            _LOGGER.error("💥 Fel vid refresh: %s", e)
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
@@ -53,31 +109,35 @@ async def async_setup(hass, config):
     async def schedule_sync(_now=None):
         nonlocal debounce_unsub
         debounce_unsub = None
-        _LOGGER.debug("🔁 Debounced Keep → ICA sync triggered")
+        _LOGGER.debug("🔁 Debounced Keep → ICA sync")
         try:
-            # Läs all data från Google Keep via service
-            result = await hass.services.async_call(
-                "todo", "get_items",
-                {"entity_id": "todo.google_keep_inkopslista_2_0_2_0"},
-                blocking=True, return_response=True
-            )
-            items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
-            summaries = [item.get("summary", "").strip() for item in items if isinstance(item, dict)]
-
-            if len(summaries) > MAX_KEEP_ITEMS:
-                _LOGGER.warning("⚠️ För många Keep-items (%s), begränsar till %s.", len(summaries), MAX_KEEP_ITEMS)
-                summaries = summaries[:MAX_KEEP_ITEMS]
-
-            lists = await api.fetch_lists()
-            rows = next((l.get("rows", []) for l in lists if l.get("id") == "817e93f7-a47d-4ec4-8da2-ed94d8fb47a7"), [])
-            existing = [row.get("text", "").strip().lower() for row in rows if isinstance(row, dict)]
-
-            if len(rows) >= MAX_ICA_ITEMS:
-                _LOGGER.warning("🛑 ICA-listan har redan %s varor, inga läggs till.", len(rows))
+            # Get Keep items
+            try:
+                result = await hass.services.async_call(
+                    "todo", "get_items",
+                    {"entity_id": "todo.google_keep_inkopslista_2_0"},
+                    blocking=True, return_response=True
+                )
+            except HomeAssistantError as err:
+                _LOGGER.warning("⚠️ Keep-service missmatch: %s", err)
                 return
 
+            items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
+            summaries = [i.get("summary", "").strip() for i in items if isinstance(i, dict)]
+            if len(summaries) > MAX_KEEP_ITEMS:
+                summaries = summaries[:MAX_KEEP_ITEMS]
+
+            # Fetch ICA rows
+            lists = await api.fetch_lists()
+            rows = next((l.get("rows", []) for l in lists if l.get("id") == TARGET_LIST_ID), [])
+            if len(rows) >= MAX_ICA_ITEMS:
+                _LOGGER.error("🚫 ICA-listan full (%s). Inga varor tillagda.", len(rows))
+                return
+
+            existing = [r.get("text", "").strip().lower() for r in rows if isinstance(r, dict)]
             space = MAX_ICA_ITEMS - len(rows)
             to_add = [s for s in summaries if s.lower() not in existing][:space]
+
             for text in to_add:
                 success = await api.add_to_list(text)
                 if success:
@@ -91,17 +151,11 @@ async def async_setup(hass, config):
         entity_ids = data.get("entity_id", [])
         if isinstance(entity_ids, str):
             entity_ids = [entity_ids]
-        # Ignorera annat än vår lista
-        if "todo.google_keep_inkopslista_2_0" not in entity_ids:
-            return
-        # Ignorera händelser utan item
-        if "item" not in data:
+        if "todo.google_keep_inkopslista_2_0" not in entity_ids or "item" not in data:
             return
 
-        # Debounce: avbryt tidigare planerad sync
         if debounce_unsub:
             debounce_unsub()
-        # Schemalägg ny sync om DEBOUNCE_SECONDS
         debounce_unsub = async_call_later(hass, DEBOUNCE_SECONDS, schedule_sync)
 
     hass.bus.async_listen("call_service", call_service_listener)
