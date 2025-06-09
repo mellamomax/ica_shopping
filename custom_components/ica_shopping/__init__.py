@@ -58,10 +58,10 @@ async def async_setup(hass, config):
             # Läs all data från Google Keep via service
             result = await hass.services.async_call(
                 "todo", "get_items",
-                {"entity_id": "todo.google_keep_inkopslista"},
+                {"entity_id": "todo.google_keep_inkopslista_2_0_2_0"},
                 blocking=True, return_response=True
             )
-            items = result.get("todo.google_keep_inkopslista", {}).get("items", [])
+            items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
             summaries = [item.get("summary", "").strip() for item in items if isinstance(item, dict)]
 
             if len(summaries) > MAX_KEEP_ITEMS:
@@ -92,7 +92,7 @@ async def async_setup(hass, config):
         if isinstance(entity_ids, str):
             entity_ids = [entity_ids]
         # Ignorera annat än vår lista
-        if "todo.google_keep_inkopslista" not in entity_ids:
+        if "todo.google_keep_inkopslista_2_0" not in entity_ids:
             return
         # Ignorera händelser utan item
         if "item" not in data:
