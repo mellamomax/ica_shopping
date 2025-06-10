@@ -1,7 +1,5 @@
 DOMAIN = "ica_shopping"
 DATA_ICA = f"{DOMAIN}._data"
-CONF_USERNAME = "username"
-CONF_PASSWORD = "password"
 COOKIE_CACHE_FILE = ".ica_cookies.json"
 
 API_USER_INFO = "https://www.ica.se/api/user/information"
