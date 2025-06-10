@@ -4,7 +4,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
-from .config import async_get_options_flow
+from .config_flow import async_get_options_flow
 
 
 _LOGGER = logging.getLogger(__name__)
