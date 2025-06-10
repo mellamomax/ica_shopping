@@ -1,6 +1,5 @@
 import logging
 import voluptuous as vol
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
