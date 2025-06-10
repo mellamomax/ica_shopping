@@ -27,7 +27,7 @@ class ICAApi:
                         return None
                     data = await resp.json()
                     token = data.get("accessToken")
-                    _LOGGER.debug("🔑 Token hämtad från session: %s", token)  # <- korrekt plats
+                    _LOGGER.warning("🔑 Token hämtad från session: %s", token)  # <- korrekt plats
                     return token
         except Exception as e:
             _LOGGER.error("❗ Fel vid hämtning av accessToken: %s", e)
