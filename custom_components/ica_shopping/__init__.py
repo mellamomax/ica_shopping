@@ -4,6 +4,8 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
+from .config import async_get_options_flow
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, entry):
     _LOGGER.debug("⚙️ ICA Shopping initieras via UI config entry")
 
-    session_id = entry.data["session_id"]
+    session_id = entry.options.get("session_id", entry.data["session_id"])
     api = ICAApi(hass, session_id=session_id)
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
