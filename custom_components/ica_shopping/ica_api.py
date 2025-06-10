@@ -7,27 +7,36 @@ from .const import API_LIST_ALL, API_ADD_ROW, API_REMOVE_ROW
 _LOGGER = logging.getLogger(__name__)
 
 class ICAApi:
-    def __init__(self, hass, username, password):
+    def __init__(self, hass, session_id):
         self.hass = hass
-        self.username = username
-        self.password = password
+        self.session_id = session_id
+               
+            
+    async def _get_token_from_session_id(self, session_id: str):
+        headers = {
+            "Cookie": f"thSessionId={session_id}",
+            "Accept": "application/json"
+        }
+        url = "https://www.ica.se/api/user/information"
 
-    async def _get_token_from_secrets_async(self):
-        path = self.hass.config.path("secrets.yaml")
         try:
-            async with aiofiles.open(path, "r") as f:
-                raw = await f.read()
-                secrets = yaml.safe_load(raw)
-            token = secrets.get("ica_token")
-            if not token:
-                _LOGGER.error("❗ Ingen ica_token hittades i secrets.yaml")
-            return token
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as resp:
+                    if resp.status != 200:
+                        _LOGGER.error("❗ Misslyckades att hämta accessToken (%s)", resp.status)
+                        return None
+                    data = await resp.json()
+                    token = data.get("accessToken")
+                    _LOGGER.debug("🔑 Token hämtad från session: %s", token)  # <- korrekt plats
+                    return token
         except Exception as e:
-            _LOGGER.error("❗ Kunde inte läsa secrets.yaml: %s", e)
+            _LOGGER.error("❗ Fel vid hämtning av accessToken: %s", e)
             return None
 
+
+
     async def fetch_lists(self):
-        token = await self._get_token_from_secrets_async()
+        token = await self._get_token_from_session_id(self.session_id)
         if not token:
             _LOGGER.error("❌ Avbryter fetch_lists - token saknas")
             return []
@@ -61,7 +70,7 @@ class ICAApi:
             return []
 
     async def add_item(self, list_id: str, item: str):
-        token = await self._get_token_from_secrets_async()
+        token = await self._get_token_from_session_id(self.session_id)
         if not token:
             return False
 
@@ -84,7 +93,7 @@ class ICAApi:
             return False
 
     async def remove_item(self, list_id: str, row_id: str):
-        token = await self._get_token_from_secrets_async()
+        token = await self._get_token_from_session_id(self.session_id)
         if not token:
             return False
 
@@ -105,7 +114,7 @@ class ICAApi:
             return False
             
     async def add_to_list(self, text: str):
-        token = await self._get_token_from_secrets_async()
+        token = await self._get_token_from_session_id(self.session_id)
         if not token:
             _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
             return False

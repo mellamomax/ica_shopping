@@ -7,13 +7,13 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
+from .config_flow import async_get_options_flow
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
-        vol.Required(CONF_USERNAME): cv.string,
-        vol.Required(CONF_PASSWORD): cv.string,
+        vol.Required("session_id"): cv.string,
     })
 }, extra=vol.ALLOW_EXTRA)
 
@@ -33,10 +33,10 @@ async def async_setup(hass, config):
         _LOGGER.warning("⚠️ ICA config saknas i configuration.yaml")
         return True
 
-    username = conf[CONF_USERNAME]
-    password = conf[CONF_PASSWORD]
+    session_id = conf["session_id"]
 
-    api = ICAApi(hass, username, password)
+    api = ICAApi(hass, session_id=session_id)
+
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)

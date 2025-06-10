@@ -19,8 +19,7 @@ class ICAConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("personnummer"): str,
-                vol.Required("pinkod"): str,
+                vol.Required("session_id"): str,
                 vol.Required("ica_list_id"): str,
                 vol.Optional("todo_entity_id"): selector({
                     "entity": {
@@ -42,8 +41,7 @@ class ICAOptionsFlowHandler(OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("personnummer", default=self.config_entry.data.get("personnummer", "")): str,
-                vol.Required("pinkod", default=self.config_entry.data.get("pinkod", "")): str,
+                vol.Required("session_id", default=self.config_entry.data.get("session_id", "")): str,
                 vol.Required("ica_list_id", default=self.config_entry.data.get("ica_list_id", "")): str,
                 vol.Optional("todo_entity_id", default=self.config_entry.data.get("todo_entity_id", "")): selector({
                     "entity": {
