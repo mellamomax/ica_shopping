@@ -1,20 +1,11 @@
 import logging
-import voluptuous as vol
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
 from .ica_api import ICAApi
-from .config_flow import async_get_options_flow
 
 _LOGGER = logging.getLogger(__name__)
-
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required("session_id"): cv.string,
-    })
-}, extra=vol.ALLOW_EXTRA)
 
 STORAGE_VERSION = 1
 STORAGE_KEY = "ica_keep_synced_list"
@@ -25,17 +16,17 @@ MAX_KEEP_ITEMS = 100
 DEBOUNCE_SECONDS = 1
 TARGET_LIST_ID = "817e93f7-a47d-4ec4-8da2-ed94d8fb47a7"
 
+
 async def async_setup(hass, config):
-    _LOGGER.debug("📦 Setting up ICA Shopping integration")
-    conf = config.get(DOMAIN)
-    if not conf:
-        _LOGGER.warning("⚠️ ICA config saknas i configuration.yaml")
-        return True
+    # Inget behövs här längre, eftersom UI används
+    return True
 
-    session_id = conf["session_id"]
 
+async def async_setup_entry(hass, entry):
+    _LOGGER.debug("⚙️ ICA Shopping initieras via UI config entry")
+
+    session_id = entry.data["session_id"]
     api = ICAApi(hass, session_id=session_id)
-
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
@@ -44,7 +35,6 @@ async def async_setup(hass, config):
     async def handle_refresh(call):
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
-            # Fetch lists
             lists = await api.fetch_lists()
             real_list = next((l for l in lists if l.get("id") == TARGET_LIST_ID), None)
             if not real_list:
@@ -56,7 +46,6 @@ async def async_setup(hass, config):
                 _LOGGER.error("🚫 ICA-listan är full (%s varor). Refresh stoppad.", len(rows))
                 return
 
-            # Create/update sensor
             ica_items = [row.get("text", "").strip() for row in rows if isinstance(row, dict)]
             entity_id = f"sensor.ica_shopping_{TARGET_LIST_ID.replace('-', '_')}"
             hass.states.async_set(
@@ -66,7 +55,6 @@ async def async_setup(hass, config):
             )
             _LOGGER.info("📡 Sensor uppdaterad: %s med %s varor", entity_id, len(ica_items))
 
-            # Sync ICA → Keep (original logic)
             service_result = await hass.services.async_call(
                 "todo", "get_items",
                 {"entity_id": "todo.google_keep_inkopslista_2_0"},
@@ -78,7 +66,6 @@ async def async_setup(hass, config):
             to_add = [item for item in ica_items if item.lower() not in keep_summaries]
             to_remove = [i.get("summary") for i in keep_items if i.get("summary", "").strip().lower() not in [x.lower() for x in ica_items]]
 
-            # Limit additions
             max_add = MAX_ICA_ITEMS - len(keep_items)
             to_add = to_add[:max_add]
 
@@ -110,23 +97,17 @@ async def async_setup(hass, config):
         debounce_unsub = None
         _LOGGER.debug("🔁 Debounced Keep → ICA sync")
         try:
-            # Get Keep items
-            try:
-                result = await hass.services.async_call(
-                    "todo", "get_items",
-                    {"entity_id": "todo.google_keep_inkopslista_2_0"},
-                    blocking=True, return_response=True
-                )
-            except HomeAssistantError as err:
-                _LOGGER.warning("⚠️ Keep-service missmatch: %s", err)
-                return
+            result = await hass.services.async_call(
+                "todo", "get_items",
+                {"entity_id": "todo.google_keep_inkopslista_2_0"},
+                blocking=True, return_response=True
+            )
 
             items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
             summaries = [i.get("summary", "").strip() for i in items if isinstance(i, dict)]
             if len(summaries) > MAX_KEEP_ITEMS:
                 summaries = summaries[:MAX_KEEP_ITEMS]
 
-            # Fetch ICA rows
             lists = await api.fetch_lists()
             rows = next((l.get("rows", []) for l in lists if l.get("id") == TARGET_LIST_ID), [])
             if len(rows) >= MAX_ICA_ITEMS:
