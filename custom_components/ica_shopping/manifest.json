@@ -9,6 +9,7 @@
   "codeowners": ["@mellamomax"],
   "iot_class": "cloud_polling",
   "image": "local/icon.png",
+  "platforms": ["sensor"],
   "config_flow": true,
   "options_flow": true
 }
