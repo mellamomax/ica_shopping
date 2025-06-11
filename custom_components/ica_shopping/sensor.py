@@ -41,10 +41,15 @@ class ShoppingListSensor(SensorEntity):
         items = data.get("rows", [])
         _LOGGER.debug("📦 Items i lista %s: %s", self._list_id, items)
         self._attr_native_value = len(items)
-        self._attr_extra_state_attributes = {
-            "items": [item["text"] for item in items],
+
+        attributes = {
             "list_name": data.get("name", "")
         }
+        for i, item in enumerate(items, start=1):
+            attributes[f"vara_{i}"] = item.get("text", "")
+
+        self._attr_extra_state_attributes = attributes
+
 
     async def async_update(self):
         lists = await self._api.fetch_lists()

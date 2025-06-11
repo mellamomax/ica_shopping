@@ -6,6 +6,11 @@ from .ica_api import ICAApi
 
 _LOGGER = logging.getLogger(__name__)
 
+
+async def _trigger_sensor_update(hass, list_id):
+    entity_id = f"sensor.ica_lista_{list_id}".replace("-", "_")  # ersätt ev. bindestreck
+    await hass.helpers.entity_component.async_update_entity(entity_id)
+
 STORAGE_VERSION = 1
 STORAGE_KEY = "ica_keep_synced_list"
 MAX_ICA_ITEMS = 250
@@ -51,11 +56,18 @@ async def async_setup_entry(hass, entry):
             existing = [r.get("text", "").strip().lower() for r in rows if isinstance(r, dict)]
             space = MAX_ICA_ITEMS - len(rows)
             to_add = [s for s in summaries if s.lower() not in existing][:space]
-
+            
+            any_added = False
             for text in to_add:
                 success = await api.add_to_list(text)
                 if success:
                     _LOGGER.info("📥 Lade till '%s' i ICA", text)
+                    any_added = True
+
+            if any_added:
+                await _trigger_sensor_update(hass, list_id)
+                    
+                    
         except Exception as e:
             _LOGGER.error("💥 Fel vid sync_keep_to_ica: %s", e)
 
@@ -119,6 +131,10 @@ async def async_setup_entry(hass, entry):
                         {"entity_id": "todo.google_keep_inkopslista_2_0", "item": summary}
                     )
                     _LOGGER.info("🗑️ Tagit bort '%s' från Keep", summary)
+
+            # Sensorn uppdateras alltid efter refresh
+            await _trigger_sensor_update(hass, list_id)
+
 
         except Exception as e:
             _LOGGER.error("💥 Fel vid refresh: %s", e)
