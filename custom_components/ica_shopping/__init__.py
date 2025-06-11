@@ -134,7 +134,7 @@ async def async_setup_entry(hass, entry):
 
             # Sensorn uppdateras alltid efter refresh
             await _trigger_sensor_update(hass, list_id)
-
+ 
 
         except Exception as e:
             _LOGGER.error("💥 Fel vid refresh: %s", e)
