@@ -38,7 +38,8 @@ class ShoppingListSensor(SensorEntity):
         }
 
     def _update_state(self, data):
-        items = data.get("items", [])
+        items = data.get("rows", [])
+        _LOGGER.debug("📦 Items i lista %s: %s", self._list_id, items)
         self._attr_native_value = len(items)
         self._attr_extra_state_attributes = {
             "items": [item["text"] for item in items],
