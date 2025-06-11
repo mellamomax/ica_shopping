@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.const import UnitOfMeasurement
 
 from .const import DOMAIN, DATA_ICA
 
@@ -16,7 +17,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     if the_list:
         async_add_entities([ShoppingListSensor(hass, api, the_list)], True)
     else:
-        _LOGGER.warning("Ingen lista med ID %s hittades vid sensor-setup", list_id)
+        _LOGGER.warning("❌ Ingen lista med ID %s hittades vid sensor-setup", list_id)
 
 class ShoppingListSensor(SensorEntity):
     def __init__(self, hass, api, data):
@@ -24,28 +25,32 @@ class ShoppingListSensor(SensorEntity):
         self._api = api
         self._list = data
         self._list_id = data.get("id")
-        self._attr_name = data.get("name")
+
         self._attr_unique_id = f"ica_shopping_{self._list_id}"
-        self._attr_native_value = len(data.get("items", []))
-        self._attr_extra_state_attributes = {
-            "items": [item["text"] for item in data.get("items", [])],
-            "list_name": self._attr_name
-        }
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, self._list_id)},
-            "name": f"ICA Lista – {self._attr_name}",
-            "manufacturer": "ICA",
-        }
+        self._attr_name = f"ICA Lista – {data.get('name')}"
+        self._attr_native_unit_of_measurement = "items"
         self._attr_has_entity_name = True
 
+        self._update_state(data)
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, self._list_id)},
+            "name": f"ICA Lista – {data.get('name')}",
+            "manufacturer": "ICA",
+        }
+
+    def _update_state(self, data):
+        items = data.get("items", [])
+        self._attr_native_value = len(items)
+        self._attr_extra_state_attributes = {
+            "items": [item["text"] for item in items],
+            "list_name": data.get("name", "")
+        }
+
     async def async_update(self):
-        lists = await self.hass.async_add_executor_job(self._api.fetch_lists)
+        lists = await self._api.fetch_lists()
         for lst in lists:
             if lst.get("id") == self._list_id:
                 self._list = lst
-                self._attr_native_value = len(lst.get("items", []))
-                self._attr_extra_state_attributes = {
-                    "items": [item["text"] for item in lst.get("items", [])],
-                    "list_name": lst.get("name", "")
-                }
+                self._update_state(lst)
                 break

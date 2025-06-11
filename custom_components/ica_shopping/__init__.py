@@ -23,7 +23,7 @@ async def async_setup_entry(hass, entry):
     api = ICAApi(hass, session_id=session_id)
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
-    # Synka Keep → ICA via tjänstelyssnare
+    # --- Keep → ICA debounce sync ---
     debounce_unsub = None
 
     async def schedule_sync(_now=None):
@@ -74,7 +74,7 @@ async def async_setup_entry(hass, entry):
 
     hass.bus.async_listen("call_service", call_service_listener)
 
-    # Registrera refresh-tjänst
+    # --- Registrera refresh-tjänst ---
     async def handle_refresh(call):
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
@@ -125,12 +125,10 @@ async def async_setup_entry(hass, entry):
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
-    # Registrera sensorplattform
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
+    # --- Ladda sensorer (korrekt sätt) ---
+    await hass.config_entries.async_forward_entry_setup(entry, "sensor")
 
-    # Hantera option-changes
+    # --- Reload vid options-ändring ---
     entry.async_on_unload(entry.add_update_listener(_options_update_listener))
 
     return True
