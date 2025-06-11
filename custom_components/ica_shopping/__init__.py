@@ -28,6 +28,7 @@ async def async_setup_entry(hass, entry):
     _LOGGER.debug("⚙️ ICA Shopping initieras via UI config entry")
 
     session_id = entry.options.get("session_id", entry.data["session_id"])
+    list_id = entry.options.get("ica_list_id", entry.data["ica_list_id"])
     api = ICAApi(hass, session_id=session_id)
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
 
@@ -142,4 +143,10 @@ async def async_setup_entry(hass, entry):
 
     hass.bus.async_listen("call_service", call_service_listener)
 
+    entry.async_on_unload(entry.add_update_listener(_options_update_listener))
+
     return True
+
+async def _options_update_listener(hass, entry):
+    _LOGGER.debug("♻️ Optioner har ändrats, laddar om entry")
+    await hass.config_entries.async_reload(entry.entry_id)

@@ -6,9 +6,15 @@ import voluptuous as vol
 from typing import Any
 from .const import DOMAIN
 
+
 class ICAConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
-
+    
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return ICAOptionsFlowHandler(config_entry)
+    
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
             return self.async_create_entry(
@@ -52,5 +58,4 @@ class ICAOptionsFlowHandler(OptionsFlow):
             }),
         )
 
-async def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> ICAOptionsFlowHandler:
-    return ICAOptionsFlowHandler(config_entry)
+
