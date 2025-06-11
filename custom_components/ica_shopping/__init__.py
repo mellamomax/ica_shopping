@@ -126,7 +126,7 @@ async def async_setup_entry(hass, entry):
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
     # --- Ladda sensorer (korrekt sätt) ---
-    await hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
 
     # --- Reload vid options-ändring ---
     entry.async_on_unload(entry.add_update_listener(_options_update_listener))
