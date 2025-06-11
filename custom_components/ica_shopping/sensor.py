@@ -1,7 +1,7 @@
 import logging
 from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import UnitOfMeasurement
+self._attr_native_unit_of_measurement = "items"
 
 from .const import DOMAIN, DATA_ICA
 
