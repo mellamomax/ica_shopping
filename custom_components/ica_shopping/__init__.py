@@ -3,8 +3,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
 from homeassistant.exceptions import HomeAssistantError
 from .const import DOMAIN, DATA_ICA
-from .ica_api import ICAApi
-from .config_flow import async_get_options_flow
+from .ica_api import ICAApi 
 
 
 _LOGGER = logging.getLogger(__name__)
