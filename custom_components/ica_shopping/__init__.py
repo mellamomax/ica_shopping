@@ -74,15 +74,29 @@ async def async_setup_entry(hass, entry):
     def call_service_listener(event):
         nonlocal debounce_unsub
         data = event.data.get("service_data", {})
+        service = event.data.get("service")
         entity_ids = data.get("entity_id", [])
+        item = data.get("item", "").strip().lower() if "item" in data else None
+
         if isinstance(entity_ids, str):
             entity_ids = [entity_ids]
-        if "todo.google_keep_inkopslista_2_0" not in entity_ids or "item" not in data:
+
+        if "todo.google_keep_inkopslista_2_0" not in entity_ids or not item:
             return
+
+        # Spåra senaste add/remove från Keep
+        if service == "add_item":
+            hass.data[DOMAIN].setdefault("recent_keep_adds", set()).add(item)
+            _LOGGER.debug("📌 Noterat 'add_item' i Keep: %s", item)
+
+        elif service == "remove_item":
+            hass.data[DOMAIN].setdefault("recent_keep_removes", set()).add(item)
+            _LOGGER.debug("📌 Noterat 'remove_item' i Keep: %s", item)
 
         if debounce_unsub:
             debounce_unsub()
         debounce_unsub = async_call_later(hass, DEBOUNCE_SECONDS, schedule_sync)
+
 
     hass.bus.async_listen("call_service", call_service_listener)
 
@@ -102,6 +116,11 @@ async def async_setup_entry(hass, entry):
                 return
 
             ica_items = [row.get("text", "").strip() for row in rows if isinstance(row, dict)]
+            ica_items_lower = [x.lower() for x in ica_items]
+            ica_rows_dict = {
+                row.get("text", "").strip().lower(): row.get("id")
+                for row in rows if isinstance(row, dict)
+            }
 
             result = await hass.services.async_call(
                 "todo", "get_items",
@@ -109,11 +128,18 @@ async def async_setup_entry(hass, entry):
                 blocking=True, return_response=True
             )
             keep_items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
-            keep_summaries = [i.get("summary", "").strip().lower() for i in keep_items if isinstance(i, dict)]
+            keep_summaries = [i.get("summary", "").strip() for i in keep_items if isinstance(i, dict)]
+            keep_lower = [x.lower() for x in keep_summaries]
 
-            to_add = [item for item in ica_items if item.lower() not in keep_summaries]
-            to_remove = [i.get("summary") for i in keep_items if i.get("summary", "").strip().lower() not in [x.lower() for x in ica_items]]
+            # Hämta senaste ändringar från Keep
+            recent_adds = hass.data[DOMAIN].get("recent_keep_adds", set())
+            recent_removes = hass.data[DOMAIN].get("recent_keep_removes", set())
 
+            # Lägg till i Keep det som saknas och inte nyss tagits bort
+            to_add = [
+                item for item in ica_items
+                if item.lower() not in keep_lower and item.lower() not in recent_removes
+            ]
             max_add = MAX_ICA_ITEMS - len(keep_items)
             to_add = to_add[:max_add]
 
@@ -124,7 +150,13 @@ async def async_setup_entry(hass, entry):
                 )
                 _LOGGER.info("✅ Lagt till '%s' i Keep", item)
 
-            for summary in to_remove:
+            # Ta bort från Keep det som inte finns i ICA
+            to_remove_from_keep = [
+                i.get("summary") for i in keep_items
+                if i.get("summary", "").strip().lower() not in ica_items_lower
+            ]
+
+            for summary in to_remove_from_keep:
                 if summary:
                     await hass.services.async_call(
                         "todo", "remove_item",
@@ -132,12 +164,23 @@ async def async_setup_entry(hass, entry):
                     )
                     _LOGGER.info("🗑️ Tagit bort '%s' från Keep", summary)
 
-            # Sensorn uppdateras alltid efter refresh
+            # Ta bort från ICA om det just tagits bort i Keep
+            to_remove_from_ica = [item for item in recent_removes if item in ica_rows_dict]
+
+            for text in to_remove_from_ica:
+                row_id = ica_rows_dict.get(text)
+                if row_id:
+                    await api.remove_item(list_id, row_id)
+                    _LOGGER.info("❌ Tog bort '%s' från ICA (baserat på Keep-radering)", text)
+
+            # Uppdatera sensor och rensa eventspårning
             await _trigger_sensor_update(hass, list_id)
- 
+            hass.data[DOMAIN]["recent_keep_adds"].clear()
+            hass.data[DOMAIN]["recent_keep_removes"].clear()
 
         except Exception as e:
             _LOGGER.error("💥 Fel vid refresh: %s", e)
+
 
     hass.services.async_register(DOMAIN, "refresh", handle_refresh)
 
