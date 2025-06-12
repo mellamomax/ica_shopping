@@ -113,37 +113,3 @@ class ICAApi:
             _LOGGER.error("❗ Error removing item from ICA: %s", e)
             return False
             
-    async def add_to_list(self, text: str):
-        token = await self._get_token_from_session_id(self.session_id)
-        if not token:
-            _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
-            return False
-
-        list_id = "817e93f7-a47d-4ec4-8da2-ed94d8fb47a7"
-        url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/list/{list_id}/row"
-
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-          "text": text
-        }
-
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=headers, json=payload) as resp:
-                    _LOGGER.debug("➕ Försöker lägga till '%s' i ICA (%s)", text, resp.status)
-                    if resp.status == 200:
-                        _LOGGER.info("✅ Lade till '%s' i ICA-listan", text)
-                        return True
-                    else:
-                        body = await resp.text()
-                        _LOGGER.warning("❗ Kunde inte lägga till i ICA (%s): %s", resp.status, body)
-                        return False
-        except Exception as e:
-            _LOGGER.error("❗ Fel vid add_to_list('%s'): %s", text, e)
-            return False
