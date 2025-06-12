@@ -10,7 +10,7 @@ class ICAApi:
     def __init__(self, hass, session_id):
         self.hass = hass
         self.session_id = session_id
-               
+
             
     async def _get_token_from_session_id(self, session_id: str):
         headers = {
