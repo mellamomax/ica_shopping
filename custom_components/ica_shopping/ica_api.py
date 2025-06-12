@@ -2,6 +2,7 @@ import logging
 import yaml
 import aiohttp
 import aiofiles
+import time
 from .const import API_LIST_ALL, API_ADD_ROW, API_REMOVE_ROW
 
 _LOGGER = logging.getLogger(__name__)
@@ -10,9 +11,16 @@ class ICAApi:
     def __init__(self, hass, session_id):
         self.hass = hass
         self.session_id = session_id
+        self._token = None
+        self._token_timestamp = 0       
                
-            
+               
+
+    
     async def _get_token_from_session_id(self, session_id: str):
+        # Återanvänd token i upp till 10 minuter (600 sekunder)
+        if self._token and (time.time() - self._token_timestamp) < 200:
+            return self._token
         headers = {
             "Cookie": f"thSessionId={session_id}",
             "Accept": "application/json"
@@ -27,7 +35,9 @@ class ICAApi:
                         return None
                     data = await resp.json()
                     token = data.get("accessToken")
-                    _LOGGER.warning("🔑 Token hämtad från session: %s", token)  # <- korrekt plats
+                    _LOGGER.warning("🔑 Ny token hämtad: %s", token)
+                    self._token = token
+                    self._token_timestamp = time.time()
                     return token
         except Exception as e:
             _LOGGER.error("❗ Fel vid hämtning av accessToken: %s", e)
