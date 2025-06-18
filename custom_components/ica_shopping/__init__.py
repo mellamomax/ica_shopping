@@ -9,6 +9,12 @@ _LOGGER = logging.getLogger(__name__)
 
 async def _trigger_sensor_update(hass, list_id):
     entity_id = f"sensor.ica_lista_{list_id}".replace("-", "_")  # ersätt ev. bindestreck
+    
+    if entity_id not in hass.states.async_entity_ids("sensor"):
+        _LOGGER.debug("ℹ️ Sensorn för list_id %s existerar inte ännu – hoppar över update", list_id)
+        return
+
+    
     await hass.services.async_call(
         "homeassistant", "update_entity",
         {"entity_id": entity_id},
@@ -138,8 +144,8 @@ async def async_setup_entry(hass, entry):
             keep_lower = [x.lower() for x in keep_summaries]
 
             # Hämta senaste ändringar från Keep
-            recent_adds = hass.data[DOMAIN].get("recent_keep_adds", set())
-            recent_removes = hass.data[DOMAIN].get("recent_keep_removes", set())
+            recent_adds = hass.data[DOMAIN].setdefault("recent_keep_adds", set())
+            recent_removes = hass.data[DOMAIN].setdefault("recent_keep_removes", set())
 
             # Lägg till i Keep det som saknas och inte nyss tagits bort
             to_add = [
