@@ -113,13 +113,12 @@ class ICAApi:
             _LOGGER.error("❗ Error removing item from ICA: %s", e)
             return False
             
-    async def add_to_list(self, text: str):
+    async def add_to_list(self, list_id: str, text: str):
         token = await self._get_token_from_session_id(self.session_id)
         if not token:
             _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
             return False
 
-        list_id = "817e93f7-a47d-4ec4-8da2-ed94d8fb47a7"
         url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/list/{list_id}/row"
 
         headers = {
@@ -129,8 +128,7 @@ class ICAApi:
         }
 
         payload = {
-          "text": text
-        }
+          "text": text}
 
 
         try:

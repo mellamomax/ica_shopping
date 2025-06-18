@@ -49,9 +49,9 @@ class ICAOptionsFlowHandler(OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("session_id", default=self.config_entry.data.get("session_id", "")): str,
-                vol.Required("ica_list_id", default=self.config_entry.data.get("ica_list_id", "")): str,
-                vol.Optional("todo_entity_id", default=self.config_entry.data.get("todo_entity_id", "")): selector({
+                vol.Required("session_id", default=self.config_entry.options.get("session_id", self.config_entry.data.get("session_id", ""))): str,
+                vol.Required("ica_list_id", default=self.config_entry.options.get("ica_list_id", self.config_entry.data.get("ica_list_id", ""))): str,
+                vol.Optional("todo_entity_id", default=self.config_entry.options.get("todo_entity_id", self.config_entry.data.get("todo_entity_id", ""))): selector({
                     "entity": {
                         "domain": "todo",
                         "multiple": False

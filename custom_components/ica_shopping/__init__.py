@@ -34,6 +34,7 @@ async def async_setup_entry(hass, entry):
     async def schedule_sync(_now=None):
         nonlocal debounce_unsub
         debounce_unsub = None
+        list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
         _LOGGER.debug("🔁 Debounced Keep → ICA sync")
         try:
             result = await hass.services.async_call(
@@ -59,7 +60,7 @@ async def async_setup_entry(hass, entry):
             
             any_added = False
             for text in to_add:
-                success = await api.add_to_list(text)
+                success = await api.add_to_list(list_id, text)
                 if success:
                     _LOGGER.info("📥 Lade till '%s' i ICA", text)
                     any_added = True
@@ -104,6 +105,7 @@ async def async_setup_entry(hass, entry):
     async def handle_refresh(call):
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
+            list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
             lists = await api.fetch_lists()
             the_list = next((l for l in lists if l.get("id") == list_id), None)
             if not the_list:
