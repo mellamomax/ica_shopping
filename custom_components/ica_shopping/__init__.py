@@ -9,7 +9,11 @@ _LOGGER = logging.getLogger(__name__)
 
 async def _trigger_sensor_update(hass, list_id):
     entity_id = f"sensor.ica_lista_{list_id}".replace("-", "_")  # ersätt ev. bindestreck
-    await hass.helpers.entity_component.async_update_entity(entity_id)
+    await hass.services.async_call(
+        "homeassistant", "update_entity",
+        {"entity_id": entity_id},
+        blocking=True
+    )
 
 STORAGE_VERSION = 1
 STORAGE_KEY = "ica_keep_synced_list"

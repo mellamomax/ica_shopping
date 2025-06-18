@@ -46,7 +46,7 @@ Submit
 NOTE: this is only valid for ~3 months which you then need to update
 
 
-## How to Get Your `ica_list_id
+## How to Get Your `ica_list_id`
 
 1. Open [ica.se](https://www.ica.se) in Chrome
 2. Log in
@@ -83,13 +83,3 @@ automation:
     action:
       - service: ica_shopping.refresh
 ```
-
-
-
-## Sensor Output
-
-The sensor shows:
-- Native value: number of items in the ICA list
-- Attributes:
-  - `list_name`: name of the list
-  - `vara_1`, `vara_2`, ...: each individual item as a separate attribute
