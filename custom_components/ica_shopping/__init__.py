@@ -32,12 +32,18 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass, entry):
     _LOGGER.debug("⚙️ ICA Shopping initieras via UI config entry")
-
     session_id = entry.options.get("session_id", entry.data["session_id"])
     list_id = entry.options.get("ica_list_id", entry.data["ica_list_id"])
     api = ICAApi(hass, session_id=session_id)
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
     hass.data[DOMAIN]["current_list_id"] = list_id  # 🔁 spara aktuellt list ID
+    keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
+    if not keep_entity:
+        _LOGGER.error("❌ Ingen todo-entity vald – ICA-integrationen kan inte synka utan en källa.")
+        return False
+
+    hass.data[DOMAIN]["keep_entity"] = keep_entity  # <--- denna rad ska komma efter du kollat att det finns
+
 
 
     # --- Keep → ICA debounce sync ---
@@ -47,15 +53,17 @@ async def async_setup_entry(hass, entry):
         nonlocal debounce_unsub
         debounce_unsub = None
         list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
+        keep_entity = hass.data[DOMAIN]["keep_entity"]
+
         _LOGGER.debug("🔁 Debounced Keep → ICA sync")
         try:
             result = await hass.services.async_call(
                 "todo", "get_items",
-                {"entity_id": "todo.google_keep_inkopslista_2_0"},
+                {"entity_id": keep_entity},
                 blocking=True, return_response=True
             )
 
-            items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
+            items = result.get(keep_entity, {}).get("items", [])
             summaries = [i.get("summary", "").strip() for i in items if isinstance(i, dict)]
             if len(summaries) > MAX_KEEP_ITEMS:
                 summaries = summaries[:MAX_KEEP_ITEMS]
@@ -89,12 +97,13 @@ async def async_setup_entry(hass, entry):
         data = event.data.get("service_data", {})
         service = event.data.get("service")
         entity_ids = data.get("entity_id", [])
+        keep_entity = hass.data[DOMAIN]["keep_entity"]
         item = data.get("item", "").strip().lower() if "item" in data else None
 
         if isinstance(entity_ids, str):
             entity_ids = [entity_ids]
 
-        if "todo.google_keep_inkopslista_2_0" not in entity_ids or not item:
+        if keep_entity not in entity_ids or not item:
             return
 
         # Spåra senaste add/remove från Keep
@@ -115,6 +124,7 @@ async def async_setup_entry(hass, entry):
 
     # --- Registrera refresh-tjänst ---
     async def handle_refresh(call):
+        keep_entity = hass.data[DOMAIN]["keep_entity"]
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
             list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
@@ -138,10 +148,10 @@ async def async_setup_entry(hass, entry):
 
             result = await hass.services.async_call(
                 "todo", "get_items",
-                {"entity_id": "todo.google_keep_inkopslista_2_0"},
+                {"entity_id": keep_entity},
                 blocking=True, return_response=True
             )
-            keep_items = result.get("todo.google_keep_inkopslista_2_0", {}).get("items", [])
+            keep_items = result.get(keep_entity, {}).get("items", [])
             keep_summaries = [i.get("summary", "").strip() for i in keep_items if isinstance(i, dict)]
             keep_lower = [x.lower() for x in keep_summaries]
 
@@ -160,7 +170,7 @@ async def async_setup_entry(hass, entry):
             for item in to_add:
                 await hass.services.async_call(
                     "todo", "add_item",
-                    {"entity_id": "todo.google_keep_inkopslista_2_0", "item": item}
+                    {"entity_id": keep_entity, "item": item}
                 )
                 _LOGGER.info("✅ Lagt till '%s' i Keep", item)
 
@@ -174,7 +184,7 @@ async def async_setup_entry(hass, entry):
                 if summary:
                     await hass.services.async_call(
                         "todo", "remove_item",
-                        {"entity_id": "todo.google_keep_inkopslista_2_0", "item": summary}
+                        {"entity_id": keep_entity, "item": summary}
                     )
                     _LOGGER.info("🗑️ Tagit bort '%s' från Keep", summary)
 
