@@ -42,10 +42,7 @@ async def async_setup_entry(hass, entry):
         _LOGGER.error("❌ Ingen todo-entity vald – ICA-integrationen kan inte synka utan en källa.")
         return False
 
-    hass.data[DOMAIN]["keep_entity"] = keep_entity  # <--- denna rad ska komma efter du kollat att det finns
-
-
-
+ 
     # --- Keep → ICA debounce sync ---
     debounce_unsub = None
 
@@ -53,7 +50,8 @@ async def async_setup_entry(hass, entry):
         nonlocal debounce_unsub
         debounce_unsub = None
         list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
-        keep_entity = hass.data[DOMAIN]["keep_entity"]
+        keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
+
 
         _LOGGER.debug("🔁 Debounced Keep → ICA sync")
         try:
@@ -97,7 +95,7 @@ async def async_setup_entry(hass, entry):
         data = event.data.get("service_data", {})
         service = event.data.get("service")
         entity_ids = data.get("entity_id", [])
-        keep_entity = hass.data[DOMAIN]["keep_entity"]
+        keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
         item = data.get("item", "").strip().lower() if "item" in data else None
 
         if isinstance(entity_ids, str):
@@ -124,7 +122,7 @@ async def async_setup_entry(hass, entry):
 
     # --- Registrera refresh-tjänst ---
     async def handle_refresh(call):
-        keep_entity = hass.data[DOMAIN]["keep_entity"]
+        keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
             list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
