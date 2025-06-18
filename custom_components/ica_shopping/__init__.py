@@ -37,6 +37,8 @@ async def async_setup_entry(hass, entry):
     list_id = entry.options.get("ica_list_id", entry.data["ica_list_id"])
     api = ICAApi(hass, session_id=session_id)
     hass.data.setdefault(DOMAIN, {})[DATA_ICA] = api
+    hass.data[DOMAIN]["current_list_id"] = list_id  # 🔁 spara aktuellt list ID
+
 
     # --- Keep → ICA debounce sync ---
     debounce_unsub = None
@@ -206,4 +208,13 @@ async def async_setup_entry(hass, entry):
 
 async def _options_update_listener(hass, entry):
     _LOGGER.debug("♻️ Optioner har ändrats, laddar om entry")
+
+    prev_list_id = hass.data[DOMAIN].get("current_list_id")
+    new_list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
+
+    if prev_list_id and prev_list_id != new_list_id:
+        _LOGGER.warning("⚠️ List ID changed from %s to %s – this may cause syncing of previous Keep items to the new ICA list.", prev_list_id, new_list_id)
+
+    hass.data[DOMAIN]["current_list_id"] = new_list_id
+
     await hass.config_entries.async_reload(entry.entry_id)

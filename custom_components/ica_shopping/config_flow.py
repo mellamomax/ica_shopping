@@ -43,21 +43,31 @@ class ICAOptionsFlowHandler(OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        current_list_id = self.config_entry.options.get("ica_list_id", self.config_entry.data.get("ica_list_id", ""))
+        
         if user_input is not None:
+            # Show warning only if list is changed
+            new_list_id = user_input.get("ica_list_id", current_list_id)
+            if new_list_id != current_list_id:
+                _LOGGER.warning("⚠️ ICA list changed from %s to %s. This may trigger Keep-to-ICA resync.", current_list_id, new_list_id)
             return self.async_create_entry(title="", data=user_input)
+
+        # Only shown during editing — not persisted
+        schema_dict = {
+            vol.Required("session_id", default=self.config_entry.options.get("session_id", self.config_entry.data.get("session_id", ""))): str,
+            vol.Required("ica_list_id", default=current_list_id): str,
+            vol.Optional("todo_entity_id", default=self.config_entry.options.get("todo_entity_id", self.config_entry.data.get("todo_entity_id", ""))): selector({
+                "entity": {
+                    "domain": "todo",
+                    "multiple": False
+                }
+            }),
+            vol.Optional("⚠️ Warning", default="Changing list may sync Keep items to a new ICA list. Clear list if needed."): str
+        }
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("session_id", default=self.config_entry.options.get("session_id", self.config_entry.data.get("session_id", ""))): str,
-                vol.Required("ica_list_id", default=self.config_entry.options.get("ica_list_id", self.config_entry.data.get("ica_list_id", ""))): str,
-                vol.Optional("todo_entity_id", default=self.config_entry.options.get("todo_entity_id", self.config_entry.data.get("todo_entity_id", ""))): selector({
-                    "entity": {
-                        "domain": "todo",
-                        "multiple": False
-                    }
-                }),
-            }),
+            data_schema=vol.Schema(schema_dict),
         )
 
 
