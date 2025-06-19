@@ -94,6 +94,17 @@ async def async_setup_entry(hass, entry):
         nonlocal debounce_unsub
         data = event.data.get("service_data", {})
         service = event.data.get("service")
+        # Lyssna på "status: completed" via update_item
+        if service == "update_item":
+            status = data.get("status")
+            text = data.get("rename")  # detta är varunamnet
+            if status == "completed" and text:
+                item = text.strip().lower()
+                hass.data[DOMAIN].setdefault("recent_keep_removes", set()).add(item)
+                _LOGGER.debug("🟡 Avlyssnad remove via update_item: %s", item)
+                
+        
+    
         entity_ids = data.get("entity_id", [])
         keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
         item = data.get("item")
