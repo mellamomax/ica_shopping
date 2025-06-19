@@ -163,11 +163,17 @@ async def async_setup_entry(hass, entry):
             recent_adds = hass.data[DOMAIN].setdefault("recent_keep_adds", set())
             recent_removes = hass.data[DOMAIN].setdefault("recent_keep_removes", set())
 
-            # Lägg till i Keep det som saknas och inte nyss tagits bort
-            to_add = [
-                item for item in ica_items
-                if item.lower() not in keep_lower and item.lower() not in recent_removes
-            ]
+            # Lägg till i Keep det som saknas i Keep, och som INTE nyss tagits bort
+            to_add = []
+            for item in ica_items:
+                key = item.lower()
+                if key not in keep_lower and key not in recent_removes:
+                    _LOGGER.debug("➕ Planerar att lägga till i Keep: %s", item)
+                    to_add.append(item)
+                else:
+                    _LOGGER.debug("⛔ Hoppar över '%s' – finns i recent_removes eller redan i Keep", item)
+
+            
             max_add = MAX_ICA_ITEMS - len(keep_items)
             to_add = to_add[:max_add]
 
@@ -201,10 +207,15 @@ async def async_setup_entry(hass, entry):
                     await api.remove_item(list_id, row_id)
                     _LOGGER.info("❌ Tog bort '%s' från ICA (baserat på Keep-radering)", text)
 
-            # Uppdatera sensor och rensa eventspårning
+            # Uppdatera sensor
             await _trigger_sensor_update(hass, list_id)
-            hass.data[DOMAIN]["recent_keep_adds"].clear()
-            hass.data[DOMAIN]["recent_keep_removes"].clear()
+
+            # Rensa eventspårning efter allt är klart
+            if "recent_keep_adds" in hass.data[DOMAIN]:
+                hass.data[DOMAIN]["recent_keep_adds"].clear()
+            if "recent_keep_removes" in hass.data[DOMAIN]:
+                hass.data[DOMAIN]["recent_keep_removes"].clear()
+
 
         except Exception as e:
             _LOGGER.error("💥 Fel vid refresh: %s", e)
