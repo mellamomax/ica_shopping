@@ -92,26 +92,32 @@ class ICAApi:
             _LOGGER.error("❗ Error adding item to ICA: %s", e)
             return False
 
-    async def remove_item(self, list_id: str, row_id: str):
+    async def remove_item(self, row_id: str) -> bool:
         token = await self._get_token_from_session_id(self.session_id)
         if not token:
+            _LOGGER.error("❌ Kan inte radera – token saknas")
             return False
 
+        url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/row/{row_id}"
         headers = {
             "Authorization": f"Bearer {token}",
-            "Accept": "application/json"
+            "Content-Type": "application/json; charset=UTF-8",
+            "Accept": "*/*"
         }
-
-        url = API_REMOVE_ROW.format(list_id=list_id, row_id=row_id)
 
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.delete(url, headers=headers) as resp:
-                    _LOGGER.debug("🗑️ Ta bort rad '%s' från ICA (%s): %s", row_id, list_id, resp.status)
-                    return resp.status == 200
+                    if resp.status in (200, 204):
+                        _LOGGER.info("🗑️ Tog bort rad %s från ICA", row_id)
+                        return True
+                    else:
+                        _LOGGER.warning("❗ Misslyckades ta bort rad %s – status %s", row_id, resp.status)
+                        return False
         except Exception as e:
-            _LOGGER.error("❗ Error removing item from ICA: %s", e)
+            _LOGGER.error("❗ Fel vid borttagning av ICA-rad: %s", e)
             return False
+
             
     async def add_to_list(self, list_id: str, text: str):
         token = await self._get_token_from_session_id(self.session_id)

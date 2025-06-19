@@ -215,7 +215,7 @@ async def async_setup_entry(hass, entry):
             for text in to_remove_from_ica:
                 row_id = ica_rows_dict.get(text)
                 if row_id:
-                    await api.remove_item(list_id, row_id)
+                    await api.remove_item(row_id)
                     _LOGGER.info("❌ Tog bort '%s' från ICA (baserat på Keep-radering)", text)
 
             # Uppdatera sensor
