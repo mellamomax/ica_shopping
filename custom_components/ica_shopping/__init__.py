@@ -96,7 +96,13 @@ async def async_setup_entry(hass, entry):
         service = event.data.get("service")
         entity_ids = data.get("entity_id", [])
         keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
-        item = data.get("item", "").strip().lower() if "item" in data else None
+        item = data.get("item")
+        if isinstance(item, str):
+            item = item.strip().lower()
+        elif isinstance(item, list) and item:
+            item = item[0].strip().lower()  # plockar första om flera finns
+        else:
+            item = None
 
         if isinstance(entity_ids, str):
             entity_ids = [entity_ids]
