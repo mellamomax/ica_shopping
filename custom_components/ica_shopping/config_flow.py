@@ -62,6 +62,7 @@ class ICAOptionsFlowHandler(OptionsFlow):
                     "multiple": False
                 }
             }),
+            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): bool,  # ✅ lägg till denna rad
             vol.Optional("⚠️ Warning", default="Changing list may sync Keep items to a new ICA list. Clear list if needed."): str
         }
 

@@ -139,17 +139,28 @@ async def async_setup_entry(hass, entry):
 
     # --- Registrera refresh-tjänst ---
     async def handle_refresh(call):
-        keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
+
         _LOGGER.debug("🔄 ICA refresh triggered via service")
         try:
+            remove_striked = entry.options.get("remove_striked", True)
+            keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
             list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
             lists = await api.fetch_lists()
             the_list = next((l for l in lists if l.get("id") == list_id), None)
             if not the_list:
                 _LOGGER.warning("❌ Kunde inte hitta ICA-lista %s", list_id)
                 return
-
+                
             rows = the_list.get("rows", [])
+
+            if remove_striked:
+                checked_rows = [r for r in rows if r.get("isStriked") is True and r.get("id")]
+                for r in checked_rows:
+                    await api.remove_item(r["id"])
+                    _LOGGER.info("🧹 Rensade avbockad vara '%s' från ICA", r.get("text", ""))
+                rows = [r for r in rows if r.get("id") not in [cr["id"] for cr in checked_rows]]
+            
+            
             if len(rows) >= MAX_ICA_ITEMS:
                 _LOGGER.error("🚫 ICA-listan är full (%s varor). Refresh stoppad.", len(rows))
                 return
