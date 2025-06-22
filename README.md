@@ -2,21 +2,24 @@
 
 # 🛒 ICA Shopping – Home Assistant Integration
 
-Sync your ICA shopping lists with Home Assistant and your shopping/todo list in HA. Automatically.
+Sync your ICA shopping lists with Home Assistant and your shopping/todo list in HA.
 
-## 🔧 Features
+This also works with Google Keep, which means you can add items to your shopping list
+using Google Assistant (voice) and have them automatically synced to your ICA shopping list
 
-- Fetch items from your ICA shopping list
-- View them in a Home Assistant sensor
-- Automatically sync with todo list in HA - This enables to sync with Google Keep and therefore with Google assitant (voice)
-- Two-way smart sync: new items added, removed, or updated
-- Avoid duplicates and restore loops
+## Limitations at the Moment
 
-NOTE: Integration is under construction and will have bugs or not work at all.
-Will keep updating this. Feel free to add issues and or suggest features
+**Polling Interval (Google Keep):**  
+While changes made in Home Assistant are instantly reflected in Google Keep, the reverse is not immediate.  
+The integration polls Google Keep for updates every 15 minutes.  
+Changes made directly in Google Keep will appear in Home Assistant after the next polling cycle.
+
+**ICA API:**  
+Changes made to your ICA shopping list (e.g. via the ICA app or website) will **not** appear immediately in Home Assistant.  
+The integration does **not** support real-time updates, so you’ll need to manually trigger a refresh to fetch the latest version of the list.
 
 
-## 📥 Installation via HACS
+## Installation via HACS
 
 Add Custom Repository:
 
@@ -61,18 +64,8 @@ https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/row/ab95586e-ffd3-49
 with 'ab95586e-ffd3-4927-bfc7-85d1c5193dbb' being your list_id
 
 
-## Sync Logic
+## Automation Example - Dont know if theres a polling limit right now. use with causion!!
 
-- ICA → Keep: Items added in ICA appear in Keep
-- Keep → ICA: Items added in Keep are synced to ICA
-- Items removed in Keep are also removed from ICA
-- Recent Keep adds/removes are respected to avoid sync conflicts
-- Sensor is updated automatically after every change
-
-
-## Automation Example - Dont know if theres a polling limit right now. use with causion
-
-Sync ICA → Keep every 5 minutes:
 
 ```yaml
 automation:
