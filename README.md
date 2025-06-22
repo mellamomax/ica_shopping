@@ -1,5 +1,3 @@
-# ica_shopping
-
 # 🛒 ICA Shopping – Home Assistant Integration
 
 Sync your ICA shopping lists with Home Assistant and your shopping/todo list in HA.
@@ -13,6 +11,7 @@ using Google Assistant (voice) and have them automatically synced to your ICA sh
 While changes made in Home Assistant are instantly reflected in Google Keep, the reverse is not immediate.  
 The integration polls Google Keep for updates every 15 minutes.  
 Changes made directly in Google Keep will appear in Home Assistant after the next polling cycle.
+[Read more about the limitations here.](https://github.com/watkins-matt/home-assistant-google-keep-sync?tab=readme-ov-file#limitations)
 
 **ICA API:**  
 Changes made to your ICA shopping list (e.g. via the ICA app or website) will **not** appear immediately in Home Assistant.  
