@@ -91,7 +91,11 @@ class ICALastPurchaseSensor(SensorEntity):
             now = datetime.now()
             url = f"https://www.ica.se/api/cpa/purchases/historical/me/byyearmonth/{now.strftime('%Y-%m')}"
 
-            headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Cookie": f"ASP.NET_SessionId={self._session_id}"
+            }
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as resp:
                     if resp.status != 200:
