@@ -94,7 +94,7 @@ class ICALastPurchaseSensor(SensorEntity):
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
-                "Cookie": f"ASP.NET_SessionId={self._session_id}"
+                "Cookie": f"thSessionId={self._session_id}"
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as resp:
