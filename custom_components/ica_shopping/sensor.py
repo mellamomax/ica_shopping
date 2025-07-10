@@ -2,6 +2,7 @@ import logging
 from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
 from .const import DOMAIN, DATA_ICA
+import asyncio  # lägg i toppen om inte redan finns
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=60)
@@ -14,7 +15,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     list_id = entry.options.get("ica_list_id", entry.data["ica_list_id"])
     session_id = entry.options.get("session_id", entry.data["session_id"])
     
-    list_name = await api.get_list_name(list_id)
+    try:
+        list_name = await asyncio.wait_for(api.get_list_name(list_id), timeout=10)
+    except Exception as e:
+        _LOGGER.error("🚫 Misslyckades hämta listnamn: %s", e)
+        return  # Avbryt setup – annars laddas trasig sensor
     
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
@@ -40,6 +45,7 @@ class ShoppingListSensor(SensorEntity):
             "name": f"ICA – {self._list_name}",
             "manufacturer": "ICA",
         }
+        _LOGGER.debug("✅ Uppdatering klar för %s", self._attr_name)
 
     def _update_state(self, data):
         items = data.get("rows", [])
@@ -58,11 +64,17 @@ class ShoppingListSensor(SensorEntity):
     async def async_update(self):
         _LOGGER.debug("🔄 async_update för lista %s", self._list_id)
         try:
-            lists = await self._api.fetch_lists()
+            try:
+                lists = await asyncio.wait_for(self._api.fetch_lists(), timeout=10)
+            except asyncio.TimeoutError:
+                _LOGGER.error("⏱️ Timeout vid hämtning av ICA-listor.")
+                return
             for lst in lists:
                 if lst.get("id") == self._list_id:
                     self._update_state(lst)
+                    _LOGGER.debug("✅ Uppdatering klar för %s", self._attr_name)
                     return
+
             _LOGGER.warning("⚠️ Kunde inte hitta lista med ID %s vid sensor update", self._list_id)
         except Exception as e:
             _LOGGER.error("💥 Fel i sensor async_update: %s", e)
@@ -113,12 +125,20 @@ class ICALastPurchaseSensor(SensorEntity):
 
     async def async_update(self):
         try:
-            token = await self._api._get_token_from_session_id()
+            try:
+                token = await asyncio.wait_for(self._api._get_token_from_session_id(), timeout=10)
+            except asyncio.TimeoutError:
+                _LOGGER.error("⏱️ Timeout vid hämtning av token.")
+                return
+            except Exception as e:
+                _LOGGER.error("💥 Fel vid tokenhämtning: %s", e)
+                return
             _LOGGER.debug("🧪 Token: %s", token)
             _LOGGER.debug("🧪 Session-ID: %s", self._api.session_id)
             
             if not token:
                 return
+
 
             now = datetime.now()
             url = f"https://www.ica.se/api/cpa/purchases/historical/me/byyearmonth/{now.strftime('%Y-%m')}"
@@ -129,28 +149,29 @@ class ICALastPurchaseSensor(SensorEntity):
                 "Cookie": f"thSessionId={self._api.session_id}"
             }
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers) as resp:
-                    if resp.status == 403:
-                        _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
-                        return
-                    elif resp.status != 200:
-                        _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
-                        return
+                try:
+                    async with session.get(url, headers=headers, timeout=10) as resp:
+                        if resp.status == 403:
+                            _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
+                            return
+                        elif resp.status != 200:
+                            _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
+                            return
 
-                    data = await resp.json()
-                    transactions = data.get("transactions", [])
-                    if not transactions:
-                        self._attr_native_value = "Inga köp"
-                        self._attr_extra_state_attributes = {}
-                        return
+                        data = await resp.json()
+                        transactions = data.get("transactions", [])
+                        if not transactions:
+                            self._attr_native_value = "Inga köp"
+                            self._attr_extra_state_attributes = {}
+                            return
 
-                    latest = transactions[0]
-                    self._attr_native_value = latest["transactionDate"][:10]
-                    self._attr_extra_state_attributes = {
-                        "transaction_id": latest["transactionId"],
-                        "belopp": latest["transactionValue"],
-                        "rabatt": latest["totalDiscount"],
-                        "butik": latest["storeMarketingName"],
-                    }
+                        latest = transactions[0]
+                        self._attr_native_value = latest["transactionDate"][:10]
+                        self._attr_extra_state_attributes = {
+                            "transaction_id": latest["transactionId"],
+                            "belopp": latest["transactionValue"],
+                            "rabatt": latest["totalDiscount"],
+                            "butik": latest["storeMarketingName"],
+                        }
         except Exception as e:
             _LOGGER.error("Fel i ICA Senaste Köp-sensor: %s", e)
