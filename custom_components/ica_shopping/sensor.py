@@ -91,6 +91,9 @@ class ICALastPurchaseSensor(SensorEntity):
     async def async_update(self):
         try:
             token = await self._api._get_token_from_session_id()
+            _LOGGER.debug("🧪 Token: %s", token)
+            _LOGGER.debug("🧪 Session-ID: %s", self._api.session_id)
+            
             if not token:
                 return
 
