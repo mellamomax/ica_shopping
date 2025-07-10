@@ -69,6 +69,13 @@ class ICAApi:
             _LOGGER.error("❗ Fel vid hämtning av ICA-listor: %s", e)
             return []
 
+    async def get_list_name(self, list_id: str) -> str:
+        lists = await self.fetch_lists()
+        for lst in lists:
+            if lst.get("id") == list_id:
+                return lst.get("name", f"Lista {list_id}")
+        return f"Lista {list_id}"  # fallback
+
     async def add_item(self, list_id: str, item: str):
         token = await self._get_token_from_session_id(self.session_id)
         if not token:

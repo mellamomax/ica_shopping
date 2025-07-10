@@ -12,18 +12,21 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     api = hass.data[DOMAIN][DATA_ICA]
     list_id = entry.options.get("ica_list_id", entry.data["ica_list_id"])
-
     session_id = entry.options.get("session_id", entry.data["session_id"])
+    
+    list_name = await api.get_list_name(list_id)
+    
     async_add_entities([
-        ShoppingListSensor(hass, api, list_id),
-        ICALastPurchaseSensor(hass, api, session_id, list_id)
+        ShoppingListSensor(hass, api, list_id, list_name),
+        ICALastPurchaseSensor(hass, api, session_id, list_id, list_name)
     ], True)
 
 class ShoppingListSensor(SensorEntity):
-    def __init__(self, hass, api, list_id):
+    def __init__(self, hass, api, list_id, list_name):
         self.hass = hass
         self._api = api
         self._list_id = list_id
+        self._list_name = list_name
 
         self._attr_unique_id = f"ica_shopping_{self._list_id}"
         self._attr_name = "Shoppinglist"
@@ -34,7 +37,7 @@ class ShoppingListSensor(SensorEntity):
 
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._list_id)},
-            "name": f"ICA Lista {self._list_id}",
+            "name": f"ICA – {self._list_name}",
             "manufacturer": "ICA",
         }
 
@@ -68,11 +71,13 @@ from datetime import datetime
 import aiohttp
 
 class ICALastPurchaseSensor(SensorEntity):
-    def __init__(self, hass, api, session_id, list_id):
+    def __init__(self, hass, api, session_id, list_id, list_name):
         self.hass = hass
         self._api = api
         self._session_id = session_id
         self._list_id = list_id
+        self._list_name = list_name
+        
         self._attr_unique_id = f"ica_last_purchase_{self._list_id}"
         self._attr_name = "Last Purchase"
         self._attr_native_value = None
@@ -80,7 +85,7 @@ class ICALastPurchaseSensor(SensorEntity):
         self._attr_extra_state_attributes = {}
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self._list_id)},
-            "name": f"ICA Lista {self._list_id}",
+            "name": f"ICA – {self._list_name}",
             "manufacturer": "ICA",
         }
 
