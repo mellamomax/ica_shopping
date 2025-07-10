@@ -150,30 +150,29 @@ class ICALastPurchaseSensor(SensorEntity):
                     "Cookie": f"thSessionId={self._api.session_id}"
                 }
                 async with aiohttp.ClientSession() as session:
-                    try:
-                        async with session.get(url, headers=headers, timeout=10) as resp:
-                            if resp.status == 403:
-                                _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
-                                return
-                            elif resp.status != 200:
-                                _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
-                                return
+                    async with session.get(url, headers=headers, timeout=10) as resp:
+                        if resp.status == 403:
+                            _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
+                            return
+                        elif resp.status != 200:
+                            _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
+                            return
 
-                            data = await resp.json()
-                            transactions = data.get("transactions", [])
-                            if not transactions:
-                                self._attr_native_value = "Inga köp"
-                                self._attr_extra_state_attributes = {}
-                                return
+                        data = await resp.json()
+                        transactions = data.get("transactions", [])
+                        if not transactions:
+                            self._attr_native_value = "Inga köp"
+                            self._attr_extra_state_attributes = {}
+                            return
 
-                            latest = transactions[0]
-                            self._attr_native_value = latest["transactionDate"][:10]
-                            self._attr_extra_state_attributes = {
-                                "transaction_id": latest["transactionId"],
-                                "belopp": latest["transactionValue"],
-                                "rabatt": latest["totalDiscount"],
-                                "butik": latest["storeMarketingName"],
-                            }
+                        latest = transactions[0]
+                        self._attr_native_value = latest["transactionDate"][:10]
+                        self._attr_extra_state_attributes = {
+                            "transaction_id": latest["transactionId"],
+                            "belopp": latest["transactionValue"],
+                            "rabatt": latest["totalDiscount"],
+                            "butik": latest["storeMarketingName"],
+                        }
             except Exception as e:
                 _LOGGER.error("Fel i ICA Senaste Köp-sensor: %s", e)
 
