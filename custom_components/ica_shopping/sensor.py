@@ -28,10 +28,10 @@ class ShoppingListSensor(SensorEntity):
         self._list_id = list_id
         self._list_name = list_name
 
-        self._attr_name = f"shoppinglist_{self._list_name.lower().replace(' ', '_')}"
-
+        self._attr_unique_id = f"shoppinglist_{self._list_id}"  # 👈 Detta är nyckeln
+        self._attr_name = "Shoppinglist"
         self._attr_native_unit_of_measurement = "items"
-        self._attr_has_entity_name = False
+        self._attr_has_entity_name = True
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
