@@ -19,7 +19,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
         ICALastPurchaseSensor(hass, api, list_id, list_name)
-    ], True)
+    ], False)
 
 class ShoppingListSensor(SensorEntity):
     def __init__(self, hass, api, list_id, list_name):
@@ -130,8 +130,11 @@ class ICALastPurchaseSensor(SensorEntity):
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as resp:
-                    if resp.status != 200:
-                        _LOGGER.warning("Kunde inte hämta köphistorik (%s)", resp.status)
+                    if resp.status == 403:
+                        _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
+                        return
+                    elif resp.status != 200:
+                        _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
                         return
 
                     data = await resp.json()
