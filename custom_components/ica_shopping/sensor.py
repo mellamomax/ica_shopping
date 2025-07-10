@@ -65,17 +65,18 @@ class ShoppingListSensor(SensorEntity):
         _LOGGER.debug("🔄 async_update för lista %s", self._list_id)
         try:
             try:
-                lists = await asyncio.wait_for(self._api.fetch_lists(), timeout=10)
+                the_list = await asyncio.wait_for(self._api.get_list_by_id(self._list_id), timeout=10)
             except asyncio.TimeoutError:
-                _LOGGER.error("⏱️ Timeout vid hämtning av ICA-listor.")
+                _LOGGER.error("⏱️ Timeout vid hämtning av ICA-lista %s.", self._list_id)
                 return
-            for lst in lists:
-                if lst.get("id") == self._list_id:
-                    self._update_state(lst)
-                    _LOGGER.debug("✅ Uppdatering klar för %s", self._attr_name)
-                    return
 
-            _LOGGER.warning("⚠️ Kunde inte hitta lista med ID %s vid sensor update", self._list_id)
+            if the_list is None:
+                _LOGGER.warning("❌ Kunde inte hitta lista med ID %s", self._list_id)
+                return
+
+            self._update_state(the_list)
+            _LOGGER.debug("✅ Uppdatering klar för %s", self._attr_name)
+
         except Exception as e:
             _LOGGER.error("💥 Fel i sensor async_update: %s", e)
 

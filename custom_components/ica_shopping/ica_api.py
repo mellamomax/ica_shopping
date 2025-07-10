@@ -76,6 +76,14 @@ class ICAApi:
                 return lst.get("name", f"Lista {list_id}")
         return f"Lista {list_id}"  # fallback
 
+    async def get_list_by_id(self, list_id: str):
+        lists = await self.fetch_lists()
+        for lst in lists:
+            if lst.get("id") == list_id:
+                return lst
+        return None
+
+
     async def add_item(self, list_id: str, item: str):
         token = await self._get_token_from_session_id()
         if not token:
