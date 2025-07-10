@@ -16,7 +16,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     session_id = entry.options.get("session_id", entry.data["session_id"])
     async_add_entities([
         ShoppingListSensor(hass, api, list_id),
-        ICALastPurchaseSensor(hass, api, session_id)
+        ICALastPurchaseSensor(hass, api, session_id, list_id)
     ], True)
 
 class ShoppingListSensor(SensorEntity):
@@ -26,7 +26,7 @@ class ShoppingListSensor(SensorEntity):
         self._list_id = list_id
 
         self._attr_unique_id = f"ica_shopping_{self._list_id}"
-        self._attr_name = f"ICA Lista – {list_id}"
+        self._attr_name = "Shoppinglist"
         self._attr_native_unit_of_measurement = "items"
         self._attr_has_entity_name = True
         self._attr_native_value = None
@@ -68,18 +68,20 @@ from datetime import datetime
 import aiohttp
 
 class ICALastPurchaseSensor(SensorEntity):
-    def __init__(self, hass, api, session_id):
+    def __init__(self, hass, api, session_id, list_id):
         self.hass = hass
         self._api = api
         self._session_id = session_id
-        self._attr_unique_id = f"ica_last_purchase"
-        self._attr_name = "ICA Senaste Köp"
+        self._list_id = list_id
+        self._attr_unique_id = f"ica_last_purchase_{self._list_id}"
+        self._attr_name = "Last Purchase"
         self._attr_native_value = None
+        self._attr_has_entity_name = True
         self._attr_extra_state_attributes = {}
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, "ica_last_purchase")},
-            "name": "ICA Senaste Köp",
-            "manufacturer": "ICA"
+            "identifiers": {(DOMAIN, self._list_id)},
+            "name": f"ICA Lista {self._list_id}",
+            "manufacturer": "ICA",
         }
 
     async def async_update(self):
@@ -116,7 +118,6 @@ class ICALastPurchaseSensor(SensorEntity):
                         "belopp": latest["transactionValue"],
                         "rabatt": latest["totalDiscount"],
                         "butik": latest["storeMarketingName"],
-                        "stad": latest["storeCity"]
                     }
         except Exception as e:
             _LOGGER.error("Fel i ICA Senaste Köp-sensor: %s", e)
