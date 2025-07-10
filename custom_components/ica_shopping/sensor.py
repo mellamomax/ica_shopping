@@ -28,10 +28,10 @@ class ShoppingListSensor(SensorEntity):
         self._list_id = list_id
         self._list_name = list_name
 
-        self._attr_unique_id = f"ica_shopping_{self._list_id}"
-        self._attr_name = "Shoppinglist"
+        self._attr_name = f"shoppinglist_{self._list_name.lower().replace(' ', '_')}"
+
         self._attr_native_unit_of_measurement = "items"
-        self._attr_has_entity_name = True
+        self._attr_has_entity_name = False
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
@@ -67,6 +67,19 @@ class ShoppingListSensor(SensorEntity):
         except Exception as e:
             _LOGGER.error("💥 Fel i sensor async_update: %s", e)
 
+    async def async_added_to_hass(self):
+        async def handle_refresh(event):
+            await self.async_update_ha_state(force_refresh=True)
+
+        self._unsub_dispatcher = self.hass.bus.async_listen("ica_shopping_refresh", handle_refresh)
+
+    async def async_will_remove_from_hass(self):
+        if hasattr(self, "_unsub_dispatcher"):
+            self._unsub_dispatcher()
+
+
+
+
 from datetime import datetime
 import aiohttp
 
@@ -87,6 +100,16 @@ class ICALastPurchaseSensor(SensorEntity):
             "name": f"ICA – {self._list_name}",
             "manufacturer": "ICA",
         }
+
+    async def async_added_to_hass(self):
+        async def handle_refresh(event):
+            await self.async_update_ha_state(force_refresh=True)
+
+        self._unsub_dispatcher = self.hass.bus.async_listen("ica_shopping_refresh", handle_refresh)
+
+    async def async_will_remove_from_hass(self):
+        if hasattr(self, "_unsub_dispatcher"):
+            self._unsub_dispatcher()
 
     async def async_update(self):
         try:
