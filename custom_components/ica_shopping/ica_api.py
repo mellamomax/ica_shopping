@@ -12,9 +12,9 @@ class ICAApi:
         self.session_id = session_id
 
             
-    async def _get_token_from_session_id(self, session_id: str):
+    async def _get_token_from_session_id(self):
         headers = {
-            "Cookie": f"thSessionId={session_id}",
+            "Cookie": f"thSessionId={self.session_id}",
             "Accept": "application/json"
         }
         url = "https://www.ica.se/api/user/information"
@@ -36,7 +36,7 @@ class ICAApi:
 
 
     async def fetch_lists(self):
-        token = await self._get_token_from_session_id(self.session_id)
+        token = await self._get_token_from_session_id()
         if not token:
             _LOGGER.error("❌ Avbryter fetch_lists - token saknas")
             return []
@@ -77,7 +77,7 @@ class ICAApi:
         return f"Lista {list_id}"  # fallback
 
     async def add_item(self, list_id: str, item: str):
-        token = await self._get_token_from_session_id(self.session_id)
+        token = await self._get_token_from_session_id()
         if not token:
             return False
 
@@ -100,7 +100,7 @@ class ICAApi:
             return False
 
     async def remove_item(self, row_id: str) -> bool:
-        token = await self._get_token_from_session_id(self.session_id)
+        token = await self._get_token_from_session_id()
         if not token:
             _LOGGER.error("❌ Kan inte radera – token saknas")
             return False
@@ -127,7 +127,7 @@ class ICAApi:
 
             
     async def add_to_list(self, list_id: str, text: str):
-        token = await self._get_token_from_session_id(self.session_id)
+        token = await self._get_token_from_session_id()
         if not token:
             _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
             return False
