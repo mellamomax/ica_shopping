@@ -19,8 +19,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
         list_name = await asyncio.wait_for(api.get_list_name(list_id), timeout=10)
     except Exception as e:
         _LOGGER.error("🚫 Misslyckades hämta listnamn: %s", e)
-        return  # Avbryt setup – annars laddas trasig sensor
-    
+        list_name = "Okänd lista"
+        
+    _LOGGER.warning("✅ Lägger till sensorer (list_id: %s, name: %s)", list_id, list_name)
+
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
         ICALastPurchaseSensor(hass, api, list_id, list_name)
@@ -66,6 +68,7 @@ class ShoppingListSensor(SensorEntity):
         try:
             try:
                 the_list = await asyncio.wait_for(self._api.get_list_by_id(self._list_id), timeout=10)
+                _LOGGER.debug("📋 Innehåll från get_list_by_id: %s", the_list)
             except asyncio.TimeoutError:
                 _LOGGER.error("⏱️ Timeout vid hämtning av ICA-lista %s.", self._list_id)
                 return
@@ -125,6 +128,8 @@ class ICALastPurchaseSensor(SensorEntity):
             self._unsub_dispatcher()
 
     async def async_update(self):
+        _LOGGER.warning("🚨 async_update körs för %s", self._attr_name)
+
         try:
             try:
                 token = await asyncio.wait_for(self._api._get_token_from_session_id(), timeout=10)
