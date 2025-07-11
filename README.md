@@ -63,15 +63,40 @@ https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/row/ab95586e-ffd3-49
 with 'ab95586e-ffd3-4927-bfc7-85d1c5193dbb' being your list_id
 
 
-## Automation Example - Dont know if theres a polling limit right now. use with causion!!
+## Example Automation (ICA Refresh)
 
+Since ICA does not push updates, you can refresh the list every X minutes:
 
 ```yaml
 automation:
-  - alias: "Sync ICA List Every 5 Minutes"
+  - alias: "Sync ICA List Every 10 Minutes"
     trigger:
       - platform: time_pattern
-        minutes: "/5"
+        minutes: "/10"
     action:
       - service: ica_shopping.refresh
+```
+
+You can also create an automation that refreshes the list when you enter or leave a store.
+This only works for ICA stores you've added as zones in Home Assistant.
+Purchases made in other locations won't trigger any update.
+
+```yaml
+alias: Ica shopping update
+description: ""
+triggers:
+  - trigger: zone
+    entity_id: device_tracker.max
+    zone: zone.ica
+    event: leave
+  - trigger: zone
+    entity_id: device_tracker.max
+    zone: zone.ica
+    event: enter
+conditions: []
+actions:
+  - action: ica_shopping.refresh
+    data: {}
+mode: single
+
 ```

@@ -62,13 +62,15 @@ class ICAOptionsFlowHandler(OptionsFlow):
                     "multiple": False
                 }
             }),
-            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): bool,  # ✅ lägg till denna rad
-            vol.Optional("⚠️ Warning", default="Changing list may sync Keep items to a new ICA list. Clear list if needed."): str
+            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): bool,
         }
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema_dict),
+            description_placeholders={
+                "warning_text": "Changing the list may sync existing Keep items to a new ICA list. Make sure to clear or check the list first if needed."
+            }
         )
 
 

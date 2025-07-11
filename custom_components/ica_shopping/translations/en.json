@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "init": {
+        "title": "ICA Shopping Configuration",
+        "description": "{warning_text}"
+      }
+    }
+  }
+}
