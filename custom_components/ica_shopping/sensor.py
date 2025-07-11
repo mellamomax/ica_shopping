@@ -25,7 +25,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
-        ICALastPurchaseSensor(hass, api, list_id, list_name, session_id)
+        #ICALastPurchaseSensor(hass, api, list_id, list_name, session_id)
     ], False)
 
 class ShoppingListSensor(SensorEntity):
