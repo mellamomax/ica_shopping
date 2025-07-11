@@ -9,7 +9,7 @@ from .ica_api import ICAApi
 _LOGGER = logging.getLogger(__name__)
 
 async def _trigger_sensor_update(hass, list_id):
-    registry = await entity_registry.async_get_registry(hass)
+    registry = await entity_registry.async_get(hass)
     target_unique_id = f"shoppinglist_{list_id}"
     sensor_entity = None
 
