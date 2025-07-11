@@ -44,7 +44,8 @@ class ICAApi:
 
         headers = {
             "Authorization": f"Bearer {token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "Cookie": f"thSessionId={self.session_id}"
         }
 
         try:
