@@ -2,22 +2,30 @@ import logging
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
 from .const import DOMAIN, DATA_ICA
+from homeassistant.helpers import entity_registry
+
 from .ica_api import ICAApi
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def _trigger_sensor_update(hass, list_id):
-    entity_id = f"sensor.ica_lista_{list_id}".replace("-", "_")  # ersätt ev. bindestreck
-    
-    if entity_id not in hass.states.async_entity_ids("sensor"):
-        _LOGGER.debug("ℹ️ Sensorn för list_id %s existerar inte ännu – hoppar över update", list_id)
+    registry = await entity_registry.async_get_registry(hass)
+    target_unique_id = f"shoppinglist_{list_id}"
+    sensor_entity = None
+
+    for entity in registry.entities.values():
+        if entity.unique_id == target_unique_id:
+            sensor_entity = entity.entity_id
+            break
+
+    if not sensor_entity:
+        _LOGGER.debug("ℹ️ Kunde inte hitta sensor med unique_id %s", target_unique_id)
         return
 
-    
+    _LOGGER.debug("🔁 Triggar update för %s", sensor_entity)
     await hass.services.async_call(
         "homeassistant", "update_entity",
-        {"entity_id": entity_id},
+        {"entity_id": sensor_entity},
         blocking=True
     )
 
