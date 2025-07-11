@@ -140,56 +140,51 @@ class ICALastPurchaseSensor(SensorEntity):
         _LOGGER.warning("🚨 async_update körs för %s", self._attr_name)
 
         try:
-            try:
-                token = await asyncio.wait_for(self._api._get_token_from_session_id(), timeout=10)
-            except asyncio.TimeoutError:
-                _LOGGER.error("⏱️ Timeout vid hämtning av token.")
-                return
-            except Exception as e:
-                _LOGGER.error("💥 Fel vid tokenhämtning: %s", e)
-                return
-            _LOGGER.debug("🧪 Token: %s", token)
-            _LOGGER.debug("🧪 Session-ID: %s", self._api.session_id)
-            
+            token = await asyncio.wait_for(self._api._get_token_from_session_id(), timeout=10)
+            _LOGGER.warning("🧪 Token mottagen: %s", token)
+            _LOGGER.warning("🍪 Session ID som används: %s", self._api.session_id)
+
             if not token:
+                _LOGGER.error("❌ Token är None – avbryter.")
                 return
 
-            # 🛠️ Här börjar det nya try-blocket
-            try:
-                now = datetime.now()
-                url = f"https://www.ica.se/api/cpa/purchases/historical/me/byyearmonth/{now.strftime('%Y-%m')}"
+            now = datetime.now()
+            url = f"https://www.ica.se/api/cpa/purchases/historical/me/byyearmonth/{now.strftime('%Y-%m')}"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Cookie": f"thSessionId={self._api.session_id}"
+            }
 
-                headers = {
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/json",
-                    "Cookie": f"thSessionId={self._api.session_id}"
-                }
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, headers=headers, timeout=10) as resp:
-                        if resp.status == 403:
-                            _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
-                            return
-                        elif resp.status != 200:
-                            _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
-                            return
+            _LOGGER.debug("🌐 Request till: %s", url)
+            _LOGGER.debug("🧾 Headers: %s", headers)
 
-                        data = await resp.json()
-                        transactions = data.get("transactions", [])
-                        if not transactions:
-                            self._attr_native_value = "Inga köp"
-                            self._attr_extra_state_attributes = {}
-                            return
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=10) as resp:
+                    if resp.status == 403:
+                        _LOGGER.warning("❌ Åtkomst nekad (403) vid hämtning av köphistorik – ignorerar.")
+                        return
+                    elif resp.status != 200:
+                        _LOGGER.error("❌ Ovänntat fel (%s) vid hämtning av köphistorik", resp.status)
+                        return
 
-                        latest = transactions[0]
-                        self._attr_native_value = latest["transactionDate"][:10]
-                        self._attr_extra_state_attributes = {
-                            "transaction_id": latest["transactionId"],
-                            "belopp": latest["transactionValue"],
-                            "rabatt": latest["totalDiscount"],
-                            "butik": latest["storeMarketingName"],
-                        }
-            except Exception as e:
-                _LOGGER.error("Fel i ICA Senaste Köp-sensor: %s", e)
+                    data = await resp.json()
+                    transactions = data.get("transactions", [])
+                    if not transactions:
+                        self._attr_native_value = "Inga köp"
+                        self._attr_extra_state_attributes = {}
+                        return
 
+                    latest = transactions[0]
+                    self._attr_native_value = latest["transactionDate"][:10]
+                    self._attr_extra_state_attributes = {
+                        "transaction_id": latest["transactionId"],
+                        "belopp": latest["transactionValue"],
+                        "rabatt": latest["totalDiscount"],
+                        "butik": latest["storeMarketingName"],
+                    }
+
+        except asyncio.TimeoutError:
+            _LOGGER.error("⏱️ Timeout vid hämtning av token eller köpinfo.")
         except Exception as e:
             _LOGGER.error("🔥 Ovänterat fel i async_update: %s", e)
