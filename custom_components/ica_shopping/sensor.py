@@ -25,7 +25,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
-        ICALastPurchaseSensor(hass, api, list_id, list_name)
+        ICALastPurchaseSensor(hass, api, list_id, list_name, session_id)
     ], False)
 
 class ShoppingListSensor(SensorEntity):
@@ -102,19 +102,16 @@ class ShoppingListSensor(SensorEntity):
         if hasattr(self, "_unsub_dispatcher"):
             self._unsub_dispatcher()
 
-
-
-
 from datetime import datetime
 import aiohttp
 
 class ICALastPurchaseSensor(SensorEntity):
-    def __init__(self, hass, api, list_id, list_name):
+    def __init__(self, hass, api, list_id, list_name, session_id):
         self.hass = hass
         self._api = api
         self._list_id = list_id
         self._list_name = list_name
-        
+        self._session_id = session_id
         self._attr_unique_id = f"ica_last_purchase_{self._list_id}"
         self._attr_name = "Last Purchase"
         self._attr_native_value = None
@@ -153,7 +150,7 @@ class ICALastPurchaseSensor(SensorEntity):
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
-                "Cookie": f"thSessionId={self._api.session_id}"
+                "Cookie": f"thSessionId={self._session_id}"
             }
 
             _LOGGER.debug("🌐 Request till: %s", url)
