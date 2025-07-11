@@ -87,7 +87,16 @@ class ShoppingListSensor(SensorEntity):
         async def handle_refresh(event):
             await self.async_update_ha_state(force_refresh=True)
 
+
         self._unsub_dispatcher = self.hass.bus.async_listen("ica_shopping_refresh", handle_refresh)
+
+        # 🔁 Tvinga manuell första uppdatering direkt
+        await self.async_update()
+        await self.async_update_ha_state(force_refresh=True)
+
+
+
+
 
     async def async_will_remove_from_hass(self):
         if hasattr(self, "_unsub_dispatcher"):
