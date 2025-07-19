@@ -35,7 +35,7 @@ class ICAApi:
 
                         ir.async_create_issue(
                             self.hass,
-                            DOMAIN="ica_shopping",
+                            domain="ica_shopping",
                             issue_id="invalid_session_id",
                             is_fixable=True,
                             severity=ir.IssueSeverity.ERROR,
@@ -50,7 +50,7 @@ class ICAApi:
 
                     # Ta bort eventuell aktiv issue om sessionen funkar igen
 
-                    ir.async_delete_issue(self.hass, DOMAIN, "invalid_session_id")
+                    ir.async_delete_issue(self.hass, domain, "invalid_session_id")
 
                     return token
 
