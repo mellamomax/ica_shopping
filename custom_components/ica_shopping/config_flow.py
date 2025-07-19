@@ -62,7 +62,12 @@ class ICAOptionsFlowHandler(OptionsFlow):
                     "multiple": False
                 }
             }),
-            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): bool,
+            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): selector({
+                "boolean": {
+                    "translation_key": "remove_striked_both"
+                }
+            }),
+
         }
 
         return self.async_show_form(

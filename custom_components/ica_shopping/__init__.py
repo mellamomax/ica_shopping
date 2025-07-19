@@ -130,14 +130,17 @@ async def async_setup_entry(hass, entry):
 
                 hass.async_create_task(remove_from_ica_direct())
 
-                
+                # Planera även en sync mot Keep
+                if debounce_unsub:
+                    debounce_unsub()
+                debounce_unsub = async_call_later(hass, DEBOUNCE_SECONDS, schedule_sync)
       
         entity_ids = data.get("entity_id", [])
         keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
         item = data.get("item")
         if isinstance(item, str):
             item = item.strip().lower()
-        elif isinstance(item, list) and item:
+        elif isinstance(item, list) and item:   
             item = item[0].strip().lower()  # plockar första om flera finns
         else:
             item = None
@@ -217,13 +220,15 @@ async def async_setup_entry(hass, entry):
             ]
 
 
-            # ❌ Radera även completed från Keep
-            for text in keep_completed:
-                await hass.services.async_call(
-                    "todo", "remove_item",
-                    {"entity_id": keep_entity, "item": text}
-                )
-                _LOGGER.info("🧹 Tog bort '%s' från Keep (pga status: completed)", text)
+            # ❌ Radera completed från Keep – endast om remove_striked är aktivt
+            if remove_striked:
+                for text in keep_completed:
+                    await hass.services.async_call(
+                        "todo", "remove_item",
+                        {"entity_id": keep_entity, "item": text}
+                    )
+                    _LOGGER.info("🧹 Tog bort '%s' från Keep (pga status: completed + remove_striked)", text)
+
 
             # 2️⃣ Lägg till dem i listan att radera från ICA
             for text in keep_completed:

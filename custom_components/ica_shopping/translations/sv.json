@@ -13,5 +13,8 @@
       "description": "ICA-integrationen kan inte hämta data. Öppna integrationen och uppdatera session ID:t i konfigurationen.",
       "severity": "error"
     }
-  }
-}
+  },
+  "remove_striked_both": {
+  "name": "Rensa avbockade och klara varor",
+  "description": "Tar bort avbockade rader från ICA och completed-items från Keep"
+  }	  

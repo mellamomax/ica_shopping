@@ -13,5 +13,9 @@
       "description": "The ICA integration cannot fetch data. Open the integration and update the session ID in the configuration.",
       "severity": "error"
     }
+  },
+  "remove_striked_both": {
+    "name": "Remove checked and completed items",
+    "description": "Removes checked rows from ICA and completed items from Keep"
   }
 }
