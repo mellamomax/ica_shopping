@@ -3,6 +3,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlow, OptionsFlow
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
+from homeassistant.helpers.selector import BooleanSelector
 
 import voluptuous as vol
 from typing import Any
@@ -35,6 +36,7 @@ class ICAConfigFlow(ConfigFlow, domain=DOMAIN):
                         "multiple": False
                     }
                 }),
+                vol.Optional("remove_striked", default=True): BooleanSelector(),  # 🆕
             }),
         )
 
@@ -62,12 +64,7 @@ class ICAOptionsFlowHandler(OptionsFlow):
                     "multiple": False
                 }
             }),
-            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): selector({
-                "boolean": {
-                    "translation_key": "remove_striked_both"
-                }
-            }),
-
+            vol.Optional("remove_striked", default=self.config_entry.options.get("remove_striked", True)): BooleanSelector(),
         }
 
         return self.async_show_form(
