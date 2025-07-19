@@ -216,6 +216,15 @@ async def async_setup_entry(hass, entry):
                 if i.get("status") == "completed"
             ]
 
+
+            # ❌ Radera även completed från Keep
+            for text in keep_completed:
+                await hass.services.async_call(
+                    "todo", "remove_item",
+                    {"entity_id": keep_entity, "item": text}
+                )
+                _LOGGER.info("🧹 Tog bort '%s' från Keep (pga status: completed)", text)
+
             # 2️⃣ Lägg till dem i listan att radera från ICA
             for text in keep_completed:
                 row_id = ica_rows_dict.get(text)

@@ -55,20 +55,6 @@ class ICAApi:
             return None
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     async def fetch_lists(self):
         token = await self._get_token_from_session_id()
         if not token:
