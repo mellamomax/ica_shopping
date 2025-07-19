@@ -49,7 +49,7 @@ class ICAApi:
 
                     # Ta bort eventuell aktiv issue om sessionen funkar igen
                     issue_registry = ir.async_get(self.hass)
-                    issue_registry.async_delete_issue("ica_shopping", "invalid_session_id")
+                    issue_registry.delete_issue("ica_shopping", "invalid_session_id")
 
                     return token
 
