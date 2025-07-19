@@ -110,9 +110,28 @@ async def async_setup_entry(hass, entry):
                 item = text.strip().lower()
                 hass.data[DOMAIN].setdefault("recent_keep_removes", set()).add(item)
                 _LOGGER.debug("🟡 Avlyssnad remove via update_item: %s", item)
+
+                # 🆕 Direktborttagning från ICA
+                async def remove_from_ica_direct():
+                    try:
+                        list_id = entry.options.get("ica_list_id", entry.data.get("ica_list_id"))
+                        lists = await api.fetch_lists()
+                        rows = next((l.get("rows", []) for l in lists if l.get("id") == list_id), [])
+                        ica_rows_dict = {
+                            row.get("text", "").strip().lower(): row.get("id")
+                            for row in rows if isinstance(row, dict)
+                        }
+                        row_id = ica_rows_dict.get(item)
+                        if row_id:
+                            await api.remove_item(row_id)
+                            _LOGGER.info("❌ Direkt borttagning av '%s' från ICA (pga completed i Keep)", item)
+                    except Exception as e:
+                        _LOGGER.error("💥 Fel vid direkt ICA-radering: %s", e)
+
+                hass.async_create_task(remove_from_ica_direct())
+
                 
-        
-    
+      
         entity_ids = data.get("entity_id", [])
         keep_entity = entry.options.get("todo_entity_id", entry.data.get("todo_entity_id"))
         item = data.get("item")
@@ -188,6 +207,24 @@ async def async_setup_entry(hass, entry):
             keep_items = result.get(keep_entity, {}).get("items", [])
             keep_summaries = [i.get("summary", "").strip() for i in keep_items if isinstance(i, dict)]
             keep_lower = [x.lower() for x in keep_summaries]
+
+
+            # 1️⃣ Hitta completed-items i Keep som fortfarande finns i ICA
+            keep_completed = [
+                i.get("summary", "").strip().lower()
+                for i in keep_items
+                if i.get("status") == "completed"
+            ]
+
+            # 2️⃣ Lägg till dem i listan att radera från ICA
+            for text in keep_completed:
+                row_id = ica_rows_dict.get(text)
+                if row_id:
+                    await api.remove_item(row_id)
+                    _LOGGER.info("❌ Tog bort '%s' från ICA (baserat på Keep: completed)", text)
+
+
+
 
             # Hämta senaste ändringar från Keep
             recent_adds = hass.data[DOMAIN].setdefault("recent_keep_adds", set())

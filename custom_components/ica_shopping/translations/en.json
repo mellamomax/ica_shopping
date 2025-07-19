@@ -6,5 +6,12 @@
         "description": "{warning_text}"
       }
     }
+  },
+  "issues": {
+    "invalid_session_id": {
+      "title": "Session ID is invalid",
+      "description": "The ICA integration cannot fetch data. Open the integration and update the session ID in the configuration.",
+      "severity": "error"
+    }
   }
 }

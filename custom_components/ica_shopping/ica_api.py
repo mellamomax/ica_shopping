@@ -3,6 +3,8 @@ import yaml
 import aiohttp
 import aiofiles
 from .const import API_LIST_ALL, API_ADD_ROW, API_REMOVE_ROW
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir  # högst upp i filen
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,19 +22,53 @@ class ICAApi:
         }
         url = "https://www.ica.se/api/user/information"
 
+
+
+
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as resp:
                     if resp.status != 200:
                         _LOGGER.error("❗ Misslyckades att hämta accessToken (%s)", resp.status)
+
+                        issue_registry = ir.async_get(self.hass)
+                        issue_registry.async_create_issue(
+                            domain="ica_shopping",
+                            issue_id="invalid_session_id",
+                            is_fixable=True,
+                            severity=ir.IssueSeverity.ERROR,
+                            translation_key="invalid_session_id",
+                            learn_more_url="https://www.ica.se/"
+                        )
                         return None
+
                     data = await resp.json()
                     token = data.get("accessToken")
-                    _LOGGER.warning("🔑 Token hämtad från session: %s", token)  # <- korrekt plats
+                    _LOGGER.warning("🔑 Token hämtad från session: %s", token)
+
+                    # Ta bort eventuell aktiv issue om sessionen funkar igen
+                    issue_registry = ir.async_get(self.hass)
+                    issue_registry.async_delete_issue("ica_shopping", "invalid_session_id")
+
                     return token
+
         except Exception as e:
             _LOGGER.error("❗ Fel vid hämtning av accessToken: %s", e)
             return None
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

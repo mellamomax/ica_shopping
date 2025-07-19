@@ -6,5 +6,12 @@
         "description": "{warning_text}"
       }
     }
+  },
+  "issues": {
+    "invalid_session_id": {
+      "title": "Session ID är ogiltigt",
+      "description": "ICA-integrationen kan inte hämta data. Öppna integrationen och uppdatera session ID:t i konfigurationen.",
+      "severity": "error"
+    }
   }
 }
