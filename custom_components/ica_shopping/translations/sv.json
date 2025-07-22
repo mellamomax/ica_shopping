@@ -15,6 +15,7 @@
     }
   },
   "remove_striked_both": {
-  "name": "Rensa avbockade och klara varor",
-  "description": "Tar bort avbockade rader från ICA och completed-items från Keep"
-  }	  
+    "name": "Rensa avbockade och klara varor",
+    "description": "Tar bort avbockade rader från ICA och completed-items från Keep"
+  }
+}
