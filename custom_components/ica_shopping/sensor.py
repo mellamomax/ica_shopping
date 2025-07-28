@@ -3,6 +3,7 @@ from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
 from .const import DOMAIN, DATA_ICA
 import asyncio  # lägg i toppen om inte redan finns
+from homeassistant.helpers.entity import EntityCategory
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=60)
@@ -21,10 +22,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
         _LOGGER.error("🚫 Misslyckades hämta listnamn: %s", e)
         list_name = "Okänd lista"
         
-    _LOGGER.warning("✅ Lägger till sensorer (list_id: %s, name: %s)", list_id, list_name)
+
 
     async_add_entities([
         ShoppingListSensor(hass, api, list_id, list_name),
+        ICATokenSensor(hass, api, session_id, list_id, list_name),
         #ICALastPurchaseSensor(hass, api, list_id, list_name, session_id)
     ], False)
 
@@ -106,6 +108,8 @@ from datetime import datetime
 import aiohttp
 
 class ICALastPurchaseSensor(SensorEntity):
+    
+
     def __init__(self, hass, api, list_id, list_name, session_id):
         self.hass = hass
         self._api = api
@@ -185,3 +189,33 @@ class ICALastPurchaseSensor(SensorEntity):
             _LOGGER.error("⏱️ Timeout vid hämtning av token eller köpinfo.")
         except Exception as e:
             _LOGGER.error("🔥 Ovänterat fel i async_update: %s", e)
+
+
+class ICATokenSensor(SensorEntity):
+    def __init__(self, hass, api, session_id, list_id, list_name):
+        self.hass = hass
+        self._api = api
+        self._session_id = session_id
+        self._list_id = list_id
+        self._list_name = list_name
+
+        self._attr_unique_id = f"ica_token_{list_id}"
+        self._attr_name = "Access Token"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_value = None
+        self._attr_has_entity_name = True
+        self._attr_extra_state_attributes = {}
+
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, list_id)},
+            "name": f"ICA – {list_name}",
+            "manufacturer": "ICA",
+        }
+
+    async def async_update(self):
+        token = await self._api._get_token_from_session_id()
+        self._attr_native_value = token or "❌"
+
+    async def async_added_to_hass(self):
+        await self.async_update()
+        await self.async_update_ha_state(force_refresh=True)

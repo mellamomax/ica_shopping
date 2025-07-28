@@ -13,7 +13,7 @@ class ICAApi:
     def __init__(self, hass, session_id):
         self.hass = hass
         self.session_id = session_id
-        _LOGGER.warning("🧾 ICAApi init med session_id: %s", self.session_id)  # 👈 Lägg till denna rad
+
 
             
     async def _get_token_from_session_id(self):
