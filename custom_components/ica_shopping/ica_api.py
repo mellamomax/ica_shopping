@@ -42,7 +42,7 @@ class ICAApi:
 
                     data = await resp.json()
                     token = data.get("accessToken")
-                    _LOGGER.warning("🔑 Token hämtad från session: %s", token)
+
 
                     # Ta bort eventuell aktiv issue om sessionen funkar igen
 
